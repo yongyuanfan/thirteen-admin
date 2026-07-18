@@ -28,7 +28,7 @@
 | `postIds` | number[] | 岗位 ID 列表（提交用） |
 | `loginIp` | string | 最后登录 IP（详情展示） |
 | `loginDate` | string | 最后登录时间 |
-| + BaseEntity | | `createBy`/`createTime`/`remark` 等 |
+| + BaseEntity | | `createdBy`/`createdAt`/`remark` 等 |
 
 ---
 

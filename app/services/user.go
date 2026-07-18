@@ -339,7 +339,7 @@ func (s *UserService) Export(ctx *gin.Context) ([][]string, error) {
 			deptName,
 			toString(row["phonenumber"]),
 			toString(row["status"]),
-			toString(row["createTime"]),
+			toString(row["createdAt"]),
 		})
 	}
 	return out, nil

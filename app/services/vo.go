@@ -23,10 +23,10 @@ func DeptToMap(d *models.Dept) map[string]any {
 		"phone":      d.Phone,
 		"email":      d.Email,
 		"status":     d.Status,
-		"createBy":   d.CreatedBy,
-		"createTime": FormatTimeVal(d.CreatedAt),
-		"updateBy":   d.UpdatedBy,
-		"updateTime": FormatTimeVal(d.UpdatedAt),
+		"createdBy":   d.CreatedBy,
+		"createdAt": FormatTimeVal(d.CreatedAt),
+		"updatedBy":   d.UpdatedBy,
+		"updatedAt": FormatTimeVal(d.UpdatedAt),
 	}
 }
 
@@ -51,10 +51,10 @@ func MenuToMap(m *models.Menu) map[string]any {
 		"status":     m.Status,
 		"perms":      m.Perms,
 		"icon":       m.Icon,
-		"createBy":   m.CreatedBy,
-		"createTime": FormatTimeVal(m.CreatedAt),
-		"updateBy":   m.UpdatedBy,
-		"updateTime": FormatTimeVal(m.UpdatedAt),
+		"createdBy":   m.CreatedBy,
+		"createdAt": FormatTimeVal(m.CreatedAt),
+		"updatedBy":   m.UpdatedBy,
+		"updatedAt": FormatTimeVal(m.UpdatedAt),
 		"remark":     m.Remark,
 	}
 }
@@ -70,10 +70,10 @@ func PostToMap(p *models.Post) map[string]any {
 		"postName":   p.PostName,
 		"postSort":   p.PostSort,
 		"status":     p.Status,
-		"createBy":   p.CreatedBy,
-		"createTime": FormatTimeVal(p.CreatedAt),
-		"updateBy":   p.UpdatedBy,
-		"updateTime": FormatTimeVal(p.UpdatedAt),
+		"createdBy":   p.CreatedBy,
+		"createdAt": FormatTimeVal(p.CreatedAt),
+		"updatedBy":   p.UpdatedBy,
+		"updatedAt": FormatTimeVal(p.UpdatedAt),
 		"remark":     p.Remark,
 	}
 }
@@ -89,10 +89,10 @@ func ConfigToMap(c *models.Config) map[string]any {
 		"configKey":   c.ConfigKey,
 		"configValue": c.ConfigValue,
 		"configType":  c.ConfigType,
-		"createBy":    c.CreatedBy,
-		"createTime":  FormatTimeVal(c.CreatedAt),
-		"updateBy":    c.UpdatedBy,
-		"updateTime":  FormatTimeVal(c.UpdatedAt),
+		"createdBy":    c.CreatedBy,
+		"createdAt":  FormatTimeVal(c.CreatedAt),
+		"updatedBy":    c.UpdatedBy,
+		"updatedAt":  FormatTimeVal(c.UpdatedAt),
 		"remark":      c.Remark,
 	}
 }
@@ -107,10 +107,10 @@ func DictTypeToMap(d *models.DictType) map[string]any {
 		"dictName":   d.DictName,
 		"dictType":   d.DictType,
 		"status":     d.Status,
-		"createBy":   d.CreatedBy,
-		"createTime": FormatTimeVal(d.CreatedAt),
-		"updateBy":   d.UpdatedBy,
-		"updateTime": FormatTimeVal(d.UpdatedAt),
+		"createdBy":   d.CreatedBy,
+		"createdAt": FormatTimeVal(d.CreatedAt),
+		"updatedBy":   d.UpdatedBy,
+		"updatedAt": FormatTimeVal(d.UpdatedAt),
 		"remark":     d.Remark,
 	}
 }
@@ -130,10 +130,10 @@ func DictDataToMap(d *models.DictData) map[string]any {
 		"listClass":  d.ListClass,
 		"isDefault":  d.IsDefault,
 		"status":     d.Status,
-		"createBy":   d.CreatedBy,
-		"createTime": FormatTimeVal(d.CreatedAt),
-		"updateBy":   d.UpdatedBy,
-		"updateTime": FormatTimeVal(d.UpdatedAt),
+		"createdBy":   d.CreatedBy,
+		"createdAt": FormatTimeVal(d.CreatedAt),
+		"updatedBy":   d.UpdatedBy,
+		"updatedAt": FormatTimeVal(d.UpdatedAt),
 		"remark":     d.Remark,
 	}
 }
@@ -153,10 +153,10 @@ func NoticeToMap(n *models.Notice) map[string]any {
 		"noticeType":    n.NoticeType,
 		"noticeContent": content,
 		"status":        n.Status,
-		"createBy":      n.CreatedBy,
-		"createTime":    FormatTimeVal(n.CreatedAt),
-		"updateBy":      n.UpdatedBy,
-		"updateTime":    FormatTimeVal(n.UpdatedAt),
+		"createdBy":      n.CreatedBy,
+		"createdAt":    FormatTimeVal(n.CreatedAt),
+		"updatedBy":      n.UpdatedBy,
+		"updatedAt":    FormatTimeVal(n.UpdatedAt),
 		"remark":        n.Remark,
 	}
 }
@@ -175,10 +175,10 @@ func RoleToMap(r *models.Role) map[string]any {
 		"menuCheckStrictly": r.MenuCheckStrictly,
 		"deptCheckStrictly": r.DeptCheckStrictly,
 		"status":            r.Status,
-		"createBy":          r.CreatedBy,
-		"createTime":        FormatTimeVal(r.CreatedAt),
-		"updateBy":          r.UpdatedBy,
-		"updateTime":        FormatTimeVal(r.UpdatedAt),
+		"createdBy":          r.CreatedBy,
+		"createdAt":        FormatTimeVal(r.CreatedAt),
+		"updatedBy":          r.UpdatedBy,
+		"updatedAt":        FormatTimeVal(r.UpdatedAt),
 		"remark":            r.Remark,
 	}
 }
@@ -316,10 +316,10 @@ func JobToMap(j *models.Job) map[string]any {
 		"misfirePolicy":  j.MisfirePolicy,
 		"concurrent":     j.Concurrent,
 		"status":         j.Status,
-		"createBy":       j.CreatedBy,
-		"createTime":     FormatTimeVal(j.CreatedAt),
-		"updateBy":       j.UpdatedBy,
-		"updateTime":     FormatTimeVal(j.UpdatedAt),
+		"createdBy":       j.CreatedBy,
+		"createdAt":     FormatTimeVal(j.CreatedAt),
+		"updatedBy":       j.UpdatedBy,
+		"updatedAt":     FormatTimeVal(j.UpdatedAt),
 		"remark":         j.Remark,
 	}
 }
@@ -365,10 +365,10 @@ func GenTableToMap(t *models.GenTable) map[string]any {
 		"genType":        t.GenType,
 		"genPath":        t.GenPath,
 		"options":        t.Options,
-		"createBy":       t.CreatedBy,
-		"createTime":     FormatTimeVal(t.CreatedAt),
-		"updateBy":       t.UpdatedBy,
-		"updateTime":     FormatTimeVal(t.UpdatedAt),
+		"createdBy":       t.CreatedBy,
+		"createdAt":     FormatTimeVal(t.CreatedAt),
+		"updatedBy":       t.UpdatedBy,
+		"updatedAt":     FormatTimeVal(t.UpdatedAt),
 		"remark":         t.Remark,
 	}
 }

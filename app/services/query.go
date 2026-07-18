@@ -45,7 +45,7 @@ func ApplyOrder(db *gorm.DB, ctx *gin.Context, defaultOrder string) *gorm.DB {
 		return db.Order(defaultOrder)
 	}
 	col = toSnake(col)
-	if asc == "asc" {
+	if asc == "asc" || asc == "ascending" {
 		return db.Order(col + " asc")
 	}
 	return db.Order(col + " desc")

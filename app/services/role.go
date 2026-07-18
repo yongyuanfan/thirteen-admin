@@ -243,7 +243,7 @@ func (s *RoleService) Export(ctx *gin.Context) ([][]string, error) {
 			toString(row["roleKey"]),
 			toString(row["roleSort"]),
 			toString(row["status"]),
-			toString(row["createTime"]),
+			toString(row["createdAt"]),
 		})
 	}
 	return out, nil

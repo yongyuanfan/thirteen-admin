@@ -116,7 +116,7 @@ func (s *ConfigService) Export(ctx *gin.Context) ([][]string, error) {
 			toString(row["configKey"]),
 			toString(row["configValue"]),
 			toString(row["configType"]),
-			toString(row["createTime"]),
+			toString(row["createdAt"]),
 		})
 	}
 	return out, nil

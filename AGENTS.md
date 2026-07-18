@@ -77,7 +77,7 @@ Bootstrap(app) → handlers / services / seeds / middlewares / router
 - 统一响应：`{ "code": number, "msg": string, "data"?: any }`；成功码 `200`；业务失败也返回 HTTP 200，由 `code` 区分（`401`/`500`/`601` 等）。
 - 分页列表：`{ "code", "msg", "total", "rows" }`。
 - 部分接口字段平铺根级（如登录 `token`、`getInfo` 的 `user/roles/permissions`）。
-- JSON 字段使用 camelCase（如 `userName`、`userId`）；库表 `id`/`created_at` 经 VO 映射为 `userId`/`createTime` 等。
+- JSON 字段使用 camelCase（如 `userName`、`userId`）；库表 `id`/`created_at` 经 VO 映射为 `userId`/`createdAt` 等。
 - 需登录接口使用 `Authorization: Bearer <token>`；用户 ID 从 `middlewares.ContextUserIDKey` 读取。
 - 接口契约真源：`docs/api-docs/`。
 

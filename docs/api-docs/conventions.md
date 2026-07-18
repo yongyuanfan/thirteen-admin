@@ -123,15 +123,15 @@ DELETE /system/user/1,2,3
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `createBy` | string | 创建者 |
-| `createTime` | string | 创建时间（前端展示用字符串/日期） |
-| `updateBy` | string | 更新者 |
-| `updateTime` | string | 更新时间 |
+| `createdBy` | string | 创建者 |
+| `createdAt` | string | 创建时间（前端展示用字符串/日期） |
+| `updatedBy` | string | 更新者 |
+| `updatedAt` | string | 更新时间 |
 | `remark` | string | 备注 |
 | `params` | object | 请求扩展参数（如时间范围） |
 | `searchValue` | string | 搜索关键字（部分接口） |
 
-> 说明：数据库层可能使用 `created_by` / `created_at` 等列名；**HTTP JSON 字段名需与本文档一致**（`createBy` / `createTime`），由后端序列化层映射。
+> 说明：HTTP JSON 与 Go 模型一致使用 `createdAt` / `createdBy`；数据库列为 `created_at` / `created_by`。
 
 ## 8. TreeSelect
 

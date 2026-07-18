@@ -29,8 +29,8 @@ func (s *NoticeService) List(ctx *gin.Context) (int64, []map[string]any, error) 
 	if title := ctx.Query("noticeTitle"); title != "" {
 		q = q.Where("notice_title LIKE ?", "%"+title+"%")
 	}
-	if createBy := ctx.Query("createBy"); createBy != "" {
-		q = q.Where("created_by LIKE ?", "%"+createBy+"%")
+	if createdBy := ctx.Query("createdBy"); createdBy != "" {
+		q = q.Where("created_by LIKE ?", "%"+createdBy+"%")
 	}
 	if typ := ctx.Query("noticeType"); typ != "" {
 		q = q.Where("notice_type = ?", typ)

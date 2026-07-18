@@ -105,7 +105,7 @@ func (s *PostService) Export(ctx *gin.Context) ([][]string, error) {
 			toString(row["postName"]),
 			toString(row["postSort"]),
 			toString(row["status"]),
-			toString(row["createTime"]),
+			toString(row["createdAt"]),
 		})
 	}
 	return out, nil

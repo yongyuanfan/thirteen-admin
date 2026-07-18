@@ -144,7 +144,7 @@ func (s *DictService) TypeExport(ctx *gin.Context) ([][]string, error) {
 			toString(row["dictName"]),
 			toString(row["dictType"]),
 			toString(row["status"]),
-			toString(row["createTime"]),
+			toString(row["createdAt"]),
 		})
 	}
 	return out, nil

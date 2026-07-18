@@ -279,10 +279,10 @@ func UserToMap(u *models.User) map[string]any {
 		"status":      u.Status,
 		"loginIp":     u.LoginIP,
 		"loginDate":   FormatTime(u.LoginDate),
-		"createBy":    u.CreatedBy,
-		"createTime":  FormatTimeVal(u.CreatedAt),
-		"updateBy":    u.UpdatedBy,
-		"updateTime":  FormatTimeVal(u.UpdatedAt),
+		"createdBy":    u.CreatedBy,
+		"createdAt":  FormatTimeVal(u.CreatedAt),
+		"updatedBy":    u.UpdatedBy,
+		"updatedAt":  FormatTimeVal(u.UpdatedAt),
 		"remark":      u.Remark,
 	}
 	return m

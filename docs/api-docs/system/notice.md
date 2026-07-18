@@ -39,7 +39,7 @@
 
 ### Query
 
-`noticeTitle`、`createBy`、`noticeType`、分页。
+`noticeTitle`、`createdBy`、`noticeType`、分页。
 
 ### 响应
 
