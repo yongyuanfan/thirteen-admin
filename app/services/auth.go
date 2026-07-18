@@ -334,7 +334,17 @@ func routeName(m models.Menu) string {
 	return strings.ToUpper(last[:1]) + last[1:]
 }
 
+func isExternalPath(path string) bool {
+	return strings.HasPrefix(path, "http://") ||
+		strings.HasPrefix(path, "https://") ||
+		strings.HasPrefix(path, "mailto:") ||
+		strings.HasPrefix(path, "tel:")
+}
+
 func routePath(m models.Menu) string {
+	if isExternalPath(m.Path) {
+		return m.Path
+	}
 	if m.ParentID == 0 && !strings.HasPrefix(m.Path, "/") {
 		return "/" + m.Path
 	}
