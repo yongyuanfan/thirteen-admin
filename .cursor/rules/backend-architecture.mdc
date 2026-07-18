@@ -49,9 +49,10 @@ app.Bootstrap → handlers/services/seeds/middlewares/router
 
 ## API 约定
 
-- 路径前缀：`/api/v1`
-- 响应：`{ "code", "msg", "data" }`，成功码 `"0000"`，HTTP 始终 200（业务错误也走信封）
-- JSON 字段 camelCase（如 `userName`、`refreshToken`）
+- 路径：根路径（如 `/login`、`/system/user/list`），对齐 `docs/api-docs`；无 `/api/v1`
+- 响应：`{ "code": number, "msg", "data"? }`，成功码 `200`，HTTP 始终 200（业务错误也走信封）
+- 分页：`{ "code", "msg", "total", "rows" }`；可用 `handler.Table` / `OK`（根级平铺）
+- JSON 字段 camelCase（如 `userName`、`userId`）；VO 映射库表 `id`/`created_at`
 - 鉴权头：`Authorization: Bearer <token>`；Context key 用 `middlewares.ContextUserIDKey`
 
 ## 编码注意

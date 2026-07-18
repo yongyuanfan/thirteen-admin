@@ -9,25 +9,14 @@ import (
 // RegisterAuthRoutes 注册鉴权相关路由。
 func RegisterAuthRoutes(h *handlers.AuthHandler) {
 	RegisterFreeRouter(func(g *gin.RouterGroup) {
-		group := g.Group("/auth")
-		{
-			group.POST("/login", h.Login)
-			group.POST("/refreshToken", h.RefreshToken)
-			group.POST("/sendCaptcha", h.SendCaptcha)
-			group.POST("/verifyCaptcha", h.VerifyCaptcha)
-			group.POST("/codeLogin", h.CodeLogin)
-			group.POST("/register", h.Register)
-			group.POST("/resetPassword", h.ResetPassword)
-		}
+		g.POST("/login", h.Login)
+		g.POST("/register", h.Register)
+		g.GET("/captchaImage", h.CaptchaImage)
 	})
-
-	RegisterAuthRouter(func(g *gin.RouterGroup, authMW gin.HandlerFunc) {
-		group := g.Group("/auth")
-		if authMW != nil {
-			group.Use(authMW)
-		}
-		{
-			group.GET("/getUserInfo", h.GetUserInfo)
-		}
+	RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
+		g.GET("/getInfo", auth, h.GetInfo)
+		g.POST("/logout", auth, h.Logout)
+		g.POST("/unlockscreen", auth, h.UnlockScreen)
+		g.GET("/getRouters", auth, h.GetRouters)
 	})
 }

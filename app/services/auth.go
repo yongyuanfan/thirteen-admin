@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	"thirteen-admin/internal/base/model"
+	"thirteen-admin/app/models"
 	"thirteen-admin/internal/base/service"
 
 	"github.com/redis/go-redis/v9"
@@ -16,245 +15,344 @@ import (
 	"gorm.io/gorm"
 )
 
-const refreshKeyPref = "auth:refresh:"
-
 var (
-	ErrInvalidCredentials = errors.New("用户名或密码错误")
-	ErrUserDisabled       = errors.New("用户已被禁用")
-	ErrPhoneRegistered    = errors.New("手机号已注册")
-	ErrRefreshInvalid     = errors.New("刷新令牌无效")
+	ErrInvalidCredentials = errors.New("用户不存在/密码错误")
+	ErrUserDisabled       = errors.New("用户已停用，请联系管理员")
+	ErrCaptchaInvalid     = errors.New("验证码错误")
+	ErrRegisterDisabled   = errors.New("当前系统没有开启注册功能")
 )
-
-// LoginToken 登录令牌响应。
-type LoginToken struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refreshToken"`
-}
-
-// UserInfo 用户信息响应。
-type UserInfo struct {
-	UserID   string   `json:"userId"`
-	UserName string   `json:"userName"`
-	Roles    []string `json:"roles"`
-	Buttons  []string `json:"buttons"`
-}
 
 // AuthService 鉴权业务。
 type AuthService struct {
 	service.Service
 	rdb     *redis.Client
 	jwt     *JWTManager
-	captcha *CaptchaStore
+	captcha *CaptchaService
+	online  *OnlineService
 }
 
 // NewAuthService 创建鉴权服务。
-func NewAuthService(db *gorm.DB, rdb *redis.Client, jwt *JWTManager, captcha *CaptchaStore) *AuthService {
+func NewAuthService(db *gorm.DB, rdb *redis.Client, jwt *JWTManager, captcha *CaptchaService, online *OnlineService) *AuthService {
 	return &AuthService{
 		Service: service.New(db),
 		rdb:     rdb,
 		jwt:     jwt,
 		captcha: captcha,
+		online:  online,
 	}
+}
+
+// CaptchaImage 生成验证码。
+func (s *AuthService) CaptchaImage(ctx context.Context) (uuid, img string, enabled bool, err error) {
+	enabled = s.captcha.Enabled()
+	if !enabled {
+		return "", "", false, nil
+	}
+	uuid, img, err = s.captcha.Generate(ctx)
+	return uuid, img, enabled, err
 }
 
 // Login 用户名密码登录。
-func (s *AuthService) Login(ctx context.Context, userName, password string) (*LoginToken, error) {
-	user, err := s.findByUserName(userName)
+func (s *AuthService) Login(ctx context.Context, username, password, code, uuid, ip, ua string) (token string, err error) {
+	if !s.captcha.Verify(ctx, uuid, code) {
+		s.recordLogin(username, ip, "1", "验证码错误")
+		return "", ErrCaptchaInvalid
+	}
+	user, err := s.findByUserName(username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrInvalidCredentials
+			s.recordLogin(username, ip, "1", "用户不存在")
+			return "", ErrInvalidCredentials
 		}
-		return nil, err
+		return "", err
 	}
-	if user.Status != 1 {
-		return nil, ErrUserDisabled
+	if user.Status == "1" || user.DelFlag == "2" {
+		s.recordLogin(username, ip, "1", "用户已停用")
+		return "", ErrUserDisabled
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, ErrInvalidCredentials
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		s.recordLogin(username, ip, "1", "密码错误")
+		return "", ErrInvalidCredentials
 	}
-	return s.issueAndStore(ctx, user)
-}
-
-// CodeLogin 手机验证码登录。
-func (s *AuthService) CodeLogin(ctx context.Context, phone, code string) (*LoginToken, error) {
-	if err := s.captcha.Verify(ctx, phone, code); err != nil {
-		return nil, err
-	}
-	user, err := s.findByPhone(phone)
+	token, err = s.jwt.IssueToken(user.ID, user.UserName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, gorm.ErrRecordNotFound
-		}
-		return nil, err
+		return "", err
 	}
-	if user.Status != 1 {
-		return nil, ErrUserDisabled
+	now := time.Now()
+	_ = s.DB.Model(user).Updates(map[string]any{
+		"login_ip":   ip,
+		"login_date": now,
+	}).Error
+	s.recordLogin(username, ip, "0", "登录成功")
+	if s.online != nil {
+		_ = s.online.Put(ctx, OnlineUser{
+			TokenID:   token,
+			UserName:  user.UserName,
+			IPAddr:    ip,
+			Browser:   ua,
+			LoginTime: now.UnixMilli(),
+		})
 	}
-	return s.issueAndStore(ctx, user)
+	return token, nil
 }
 
-// Register 手机号注册并直接登录。
-func (s *AuthService) Register(ctx context.Context, phone, code, password string) (*LoginToken, error) {
-	if err := s.captcha.Verify(ctx, phone, code); err != nil {
-		return nil, err
+// Register 注册。
+func (s *AuthService) Register(ctx context.Context, username, password, code, uuid string) error {
+	if !s.isRegisterEnabled() {
+		return ErrRegisterDisabled
+	}
+	if !s.captcha.Verify(ctx, uuid, code) {
+		return ErrCaptchaInvalid
 	}
 	var count int64
-	if err := s.DB.WithContext(ctx).Model(&models.User{}).Where("phone = ?", phone).Count(&count).Error; err != nil {
-		return nil, err
+	if err := s.DB.Model(&models.User{}).Where("user_name = ?", username).Count(&count).Error; err != nil {
+		return err
 	}
 	if count > 0 {
-		return nil, ErrPhoneRegistered
-	}
-	userName := phone
-	var nameCount int64
-	if err := s.DB.WithContext(ctx).Model(&models.User{}).Where("user_name = ?", userName).Count(&nameCount).Error; err != nil {
-		return nil, err
-	}
-	if nameCount > 0 {
-		userName = phone + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+		return errors.New("保存用户'" + username + "'失败，注册账号已存在")
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("hash password: %w", err)
+		return err
 	}
-	p := phone
 	user := &models.User{
-		UserName:     userName,
-		PasswordHash: string(hash),
-		Phone:        &p,
-		Roles:        model.StringSlice{"R_USER"},
-		Buttons:      model.StringSlice{},
-		Status:       1,
+		UserName: username,
+		NickName: username,
+		Password: string(hash),
+		Status:   "0",
+		DelFlag:  "0",
 	}
-	if err := s.DB.WithContext(ctx).Create(user).Error; err != nil {
-		return nil, err
-	}
-	return s.issueAndStore(ctx, user)
+	return s.DB.Create(user).Error
 }
 
-// ResetPassword 通过验证码重置密码。
-func (s *AuthService) ResetPassword(ctx context.Context, phone, code, password string) error {
-	if err := s.captcha.Verify(ctx, phone, code); err != nil {
-		return err
+// Logout 退出。
+func (s *AuthService) Logout(ctx context.Context, token string) error {
+	if s.online != nil && token != "" {
+		return s.online.Remove(ctx, token)
 	}
-	user, err := s.findByPhone(phone)
-	if err != nil {
-		return err
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
-	}
-	return s.DB.WithContext(ctx).Model(user).Update("password_hash", string(hash)).Error
+	return nil
 }
 
-// SendCaptcha 发送验证码。
-func (s *AuthService) SendCaptcha(ctx context.Context, phone string) error {
-	_, err := s.captcha.Send(ctx, phone)
-	return err
-}
-
-// VerifyCaptcha 独立校验验证码。
-func (s *AuthService) VerifyCaptcha(ctx context.Context, phone, code string) error {
-	return s.captcha.Verify(ctx, phone, code)
-}
-
-// GetUserInfo 按用户 ID 查询信息。
-func (s *AuthService) GetUserInfo(ctx context.Context, userID string) (*UserInfo, error) {
-	id, err := strconv.ParseUint(userID, 10, 64)
-	if err != nil {
-		return nil, ErrInvalidToken
-	}
+// UnlockScreen 解锁屏幕。
+func (s *AuthService) UnlockScreen(userID uint, password string) error {
 	var user models.User
-	if err := s.DB.WithContext(ctx).First(&user, id).Error; err != nil {
-		return nil, err
+	if err := s.DB.First(&user, userID).Error; err != nil {
+		return ErrInvalidCredentials
 	}
-	roles := []string(user.Roles)
-	if roles == nil {
-		roles = []string{}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return ErrInvalidCredentials
 	}
-	buttons, err := ResolveButtonsByRoleCodes(ctx, s.DB, roles)
+	return nil
+}
+
+// GetInfo 当前用户信息。
+func (s *AuthService) GetInfo(userID uint) (user map[string]any, roles, perms []string, isDefaultModifyPwd, isPasswordExpired bool, err error) {
+	var u models.User
+	if err = s.DB.First(&u, userID).Error; err != nil {
+		return nil, nil, nil, false, false, err
+	}
+	roles, err = s.RoleKeys(userID)
+	if err != nil {
+		return nil, nil, nil, false, false, err
+	}
+	perms, err = s.Permissions(userID, roles)
+	if err != nil {
+		return nil, nil, nil, false, false, err
+	}
+	user = UserToMap(&u)
+	return user, roles, perms, false, false, nil
+}
+
+// GetRouters 动态路由。
+func (s *AuthService) GetRouters(userID uint) ([]map[string]any, error) {
+	roles, err := s.RoleKeys(userID)
 	if err != nil {
 		return nil, err
 	}
-	// 兼容种子用户上直接配置的 "*" 按钮
-	for _, b := range user.Buttons {
-		if b == "*" {
-			buttons = []string{"*"}
-			break
+	var menus []models.Menu
+	q := s.DB.Model(&models.Menu{}).Where("status = ? AND menu_type IN ?", "0", []string{"M", "C"}).Order("parent_id asc, order_num asc")
+	if !isAdminRole(roles) {
+		var menuIDs []uint
+		err = s.DB.Table("sys_role_menu rm").
+			Joins("JOIN sys_user_role ur ON ur.role_id = rm.role_id").
+			Where("ur.user_id = ?", userID).
+			Pluck("rm.menu_id", &menuIDs).Error
+		if err != nil {
+			return nil, err
+		}
+		if len(menuIDs) == 0 {
+			return []map[string]any{}, nil
+		}
+		q = q.Where("id IN ?", menuIDs)
+	}
+	if err := q.Find(&menus).Error; err != nil {
+		return nil, err
+	}
+	return buildRouterTree(menus, 0), nil
+}
+
+// RoleKeys 用户角色权限字符。
+func (s *AuthService) RoleKeys(userID uint) ([]string, error) {
+	var keys []string
+	err := s.DB.Table("sys_role r").
+		Joins("JOIN sys_user_role ur ON ur.role_id = r.id").
+		Where("ur.user_id = ? AND r.status = ? AND r.del_flag = ?", userID, "0", "0").
+		Pluck("r.role_key", &keys).Error
+	if err != nil {
+		return nil, err
+	}
+	if keys == nil {
+		keys = []string{}
+	}
+	return keys, nil
+}
+
+// Permissions 权限标识。
+func (s *AuthService) Permissions(userID uint, roles []string) ([]string, error) {
+	if isAdminRole(roles) {
+		return []string{"*:*:*"}, nil
+	}
+	var perms []string
+	err := s.DB.Table("sys_menu m").
+		Joins("JOIN sys_role_menu rm ON rm.menu_id = m.id").
+		Joins("JOIN sys_user_role ur ON ur.role_id = rm.role_id").
+		Where("ur.user_id = ? AND m.status = ? AND m.perms <> '' AND m.perms IS NOT NULL", userID, "0").
+		Distinct().
+		Pluck("m.perms", &perms).Error
+	if err != nil {
+		return nil, err
+	}
+	if perms == nil {
+		perms = []string{}
+	}
+	return perms, nil
+}
+
+func (s *AuthService) findByUserName(username string) (*models.User, error) {
+	var user models.User
+	err := s.DB.Where("user_name = ? AND del_flag = ?", username, "0").First(&user).Error
+	return &user, err
+}
+
+func (s *AuthService) isRegisterEnabled() bool {
+	var cfg models.Config
+	if err := s.DB.Where("config_key = ?", "sys.account.registerUser").First(&cfg).Error; err != nil {
+		return false
+	}
+	return strings.EqualFold(cfg.ConfigValue, "true")
+}
+
+func (s *AuthService) recordLogin(username, ip, status, msg string) {
+	now := time.Now()
+	_ = s.DB.Create(&models.Logininfor{
+		UserName:  username,
+		IPAddr:    ip,
+		Status:    status,
+		Msg:       msg,
+		LoginTime: &now,
+	}).Error
+}
+
+func isAdminRole(roles []string) bool {
+	for _, r := range roles {
+		if r == "admin" {
+			return true
 		}
 	}
-	return &UserInfo{
-		UserID:   strconv.FormatUint(uint64(user.ID), 10),
-		UserName: user.UserName,
-		Roles:    roles,
-		Buttons:  buttons,
-	}, nil
+	return false
 }
 
-// RefreshToken 轮转刷新令牌。
-func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*LoginToken, error) {
-	claims, err := s.jwt.ParseRefresh(refreshToken)
-	if err != nil {
-		return nil, ErrRefreshInvalid
+// UserToMap 用户 VO。
+func UserToMap(u *models.User) map[string]any {
+	if u == nil {
+		return nil
 	}
-	key := refreshRedisKey(claims.UserID, claims.ID)
-	stored, err := s.rdb.Get(ctx, key).Result()
-	if err != nil || stored != refreshToken {
-		return nil, ErrRefreshInvalid
+	m := map[string]any{
+		"userId":      u.ID,
+		"deptId":      u.DeptID,
+		"userName":    u.UserName,
+		"nickName":    u.NickName,
+		"email":       u.Email,
+		"phonenumber": u.Phonenumber,
+		"sex":         u.Sex,
+		"avatar":      u.Avatar,
+		"status":      u.Status,
+		"loginIp":     u.LoginIP,
+		"loginDate":   FormatTime(u.LoginDate),
+		"createBy":    u.CreatedBy,
+		"createTime":  FormatTimeVal(u.CreatedAt),
+		"updateBy":    u.UpdatedBy,
+		"updateTime":  FormatTimeVal(u.UpdatedAt),
+		"remark":      u.Remark,
 	}
-	_ = s.rdb.Del(ctx, key).Err()
-
-	id, err := strconv.ParseUint(claims.UserID, 10, 64)
-	if err != nil {
-		return nil, ErrRefreshInvalid
-	}
-	var user models.User
-	if err := s.DB.WithContext(ctx).First(&user, id).Error; err != nil {
-		return nil, ErrRefreshInvalid
-	}
-	if user.Status != 1 {
-		return nil, ErrUserDisabled
-	}
-	return s.issueAndStore(ctx, &user)
+	return m
 }
 
-func (s *AuthService) issueAndStore(ctx context.Context, user *models.User) (*LoginToken, error) {
-	pair, err := s.jwt.IssueTokenPair(user.ID, user.UserName)
-	if err != nil {
-		return nil, err
+func buildRouterTree(menus []models.Menu, parentID uint) []map[string]any {
+	out := make([]map[string]any, 0)
+	for _, m := range menus {
+		if m.ParentID != parentID {
+			continue
+		}
+		children := buildRouterTree(menus, m.ID)
+		node := map[string]any{
+			"name":      routeName(m),
+			"path":      routePath(m),
+			"hidden":    m.Visible == "1",
+			"component": routeComponent(m),
+			"meta": map[string]any{
+				"title":   m.MenuName,
+				"icon":    m.Icon,
+				"noCache": m.IsCache == 1,
+				"link":    nil,
+			},
+		}
+		if m.Query != "" {
+			node["query"] = m.Query
+		}
+		if len(children) > 0 {
+			if m.MenuType == "M" {
+				node["alwaysShow"] = true
+				node["redirect"] = "noRedirect"
+			}
+			node["children"] = children
+		}
+		out = append(out, node)
 	}
-	key := refreshRedisKey(pair.UserID, pair.RefreshJTI)
-	if err := s.rdb.Set(ctx, key, pair.RefreshToken, s.jwt.RefreshTTL()).Err(); err != nil {
-		return nil, fmt.Errorf("store refresh token: %w", err)
+	return out
+}
+
+func routeName(m models.Menu) string {
+	if m.RouteName != "" {
+		return m.RouteName
 	}
-	return &LoginToken{
-		Token:        pair.Token,
-		RefreshToken: pair.RefreshToken,
-	}, nil
-}
-
-func (s *AuthService) findByUserName(userName string) (*models.User, error) {
-	var user models.User
-	err := s.DB.Where("user_name = ?", userName).First(&user).Error
-	return &user, err
-}
-
-func (s *AuthService) findByPhone(phone string) (*models.User, error) {
-	var user models.User
-	err := s.DB.Where("phone = ?", phone).First(&user).Error
-	return &user, err
-}
-
-func refreshRedisKey(userID, jti string) string {
-	return refreshKeyPref + userID + ":" + jti
-}
-
-// NormalizePhone 简单校验手机号。
-func NormalizePhone(phone string) (string, error) {
-	phone = strings.TrimSpace(phone)
-	if len(phone) < 6 || len(phone) > 20 {
-		return "", errors.New("手机号格式不正确")
+	if m.Path == "" {
+		return fmt.Sprintf("Menu%d", m.ID)
 	}
-	return phone, nil
+	parts := strings.Split(m.Path, "/")
+	last := parts[len(parts)-1]
+	if last == "" {
+		return fmt.Sprintf("Menu%d", m.ID)
+	}
+	return strings.ToUpper(last[:1]) + last[1:]
+}
+
+func routePath(m models.Menu) string {
+	if m.ParentID == 0 && !strings.HasPrefix(m.Path, "/") {
+		return "/" + m.Path
+	}
+	return m.Path
+}
+
+func routeComponent(m models.Menu) string {
+	if m.ParentID == 0 && m.MenuType == "M" {
+		return "Layout"
+	}
+	if m.MenuType == "M" {
+		return "ParentView"
+	}
+	if m.Component != "" {
+		return m.Component
+	}
+	return "ParentView"
 }

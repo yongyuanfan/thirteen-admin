@@ -10,10 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Gin Context 中注入的鉴权字段 key。
 const (
 	ContextUserIDKey   = "authUserID"
 	ContextUserNameKey = "authUserName"
+	ContextTokenKey    = "authToken"
 )
 
 // Auth JWT 鉴权中间件。
@@ -22,19 +22,19 @@ func Auth(jwtManager *services.JWTManager) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		header := ctx.GetHeader("Authorization")
 		if header == "" {
-			h.Fail(ctx, handler.CodeUnauthorized, "未登录")
+			h.Unauthorized(ctx, "认证失败，无法访问系统资源")
 			ctx.Abort()
 			return
 		}
 		const prefix = "Bearer "
 		if !strings.HasPrefix(header, prefix) {
-			h.Fail(ctx, handler.CodeUnauthorized, "未登录")
+			h.Unauthorized(ctx, "认证失败，无法访问系统资源")
 			ctx.Abort()
 			return
 		}
 		tokenStr := strings.TrimSpace(strings.TrimPrefix(header, prefix))
 		if tokenStr == "" {
-			h.Fail(ctx, handler.CodeUnauthorized, "未登录")
+			h.Unauthorized(ctx, "认证失败，无法访问系统资源")
 			ctx.Abort()
 			return
 		}
@@ -42,9 +42,9 @@ func Auth(jwtManager *services.JWTManager) gin.HandlerFunc {
 		claims, err := jwtManager.ParseAccess(tokenStr)
 		if err != nil {
 			if errors.Is(err, services.ErrExpiredToken) {
-				h.Fail(ctx, handler.CodeTokenExpired, "令牌已过期")
+				h.Unauthorized(ctx, "登录状态已过期")
 			} else {
-				h.Fail(ctx, handler.CodeUnauthorized, "未登录")
+				h.Unauthorized(ctx, "认证失败，无法访问系统资源")
 			}
 			ctx.Abort()
 			return
@@ -52,6 +52,7 @@ func Auth(jwtManager *services.JWTManager) gin.HandlerFunc {
 
 		ctx.Set(ContextUserIDKey, claims.UserID)
 		ctx.Set(ContextUserNameKey, claims.UserName)
+		ctx.Set(ContextTokenKey, tokenStr)
 		ctx.Next()
 	}
 }

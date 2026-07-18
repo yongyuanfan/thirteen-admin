@@ -13,10 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	tokenTypeAccess  = "access"
-	tokenTypeRefresh = "refresh"
-)
+const tokenTypeAccess = "access"
 
 var (
 	ErrInvalidToken = errors.New("无效的令牌")
@@ -31,19 +28,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// TokenPair access + refresh 双令牌。
-type TokenPair struct {
-	Token        string
-	RefreshToken string
-	RefreshJTI   string
-	UserID       string
-}
-
 // JWTManager JWT 签发与解析。
 type JWTManager struct {
-	secret     []byte
-	accessTTL  time.Duration
-	refreshTTL time.Duration
+	secret    []byte
+	accessTTL time.Duration
 }
 
 // NewJWTManager 从配置创建 JWT 管理器。
@@ -52,48 +40,23 @@ func NewJWTManager(cfg config.JWT) *JWTManager {
 	if accessTTL <= 0 {
 		accessTTL = 2 * time.Hour
 	}
-	refreshTTL := time.Duration(cfg.RefreshExpiresIn) * time.Second
-	if refreshTTL <= 0 {
-		refreshTTL = 7 * 24 * time.Hour
-	}
 	return &JWTManager{
-		secret:     []byte(cfg.Secret),
-		accessTTL:  accessTTL,
-		refreshTTL: refreshTTL,
+		secret:    []byte(cfg.Secret),
+		accessTTL: accessTTL,
 	}
 }
 
 // AccessTTL 返回 access token 有效期。
 func (m *JWTManager) AccessTTL() time.Duration { return m.accessTTL }
 
-// RefreshTTL 返回 refresh token 有效期。
-func (m *JWTManager) RefreshTTL() time.Duration { return m.refreshTTL }
-
-// IssueTokenPair 为用户签发 access + refresh。
-func (m *JWTManager) IssueTokenPair(userID uint, userName string) (*TokenPair, error) {
+// IssueToken 为用户签发 access token。
+func (m *JWTManager) IssueToken(userID uint, userName string) (string, error) {
 	uid := strconv.FormatUint(uint64(userID), 10)
-	accessJTI, err := newJTI()
+	jti, err := newJTI()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	access, err := m.sign(uid, userName, tokenTypeAccess, m.accessTTL, accessJTI)
-	if err != nil {
-		return nil, fmt.Errorf("签发 access token: %w", err)
-	}
-	refreshJTI, err := newJTI()
-	if err != nil {
-		return nil, err
-	}
-	refresh, err := m.sign(uid, userName, tokenTypeRefresh, m.refreshTTL, refreshJTI)
-	if err != nil {
-		return nil, fmt.Errorf("签发 refresh token: %w", err)
-	}
-	return &TokenPair{
-		Token:        access,
-		RefreshToken: refresh,
-		RefreshJTI:   refreshJTI,
-		UserID:       uid,
-	}, nil
+	return m.sign(uid, userName, tokenTypeAccess, m.accessTTL, jti)
 }
 
 func newJTI() (string, error) {
@@ -123,15 +86,6 @@ func (m *JWTManager) sign(userID, userName, typ string, ttl time.Duration, jti s
 
 // ParseAccess 解析并校验 access token。
 func (m *JWTManager) ParseAccess(tokenStr string) (*Claims, error) {
-	return m.parse(tokenStr, tokenTypeAccess)
-}
-
-// ParseRefresh 解析并校验 refresh token。
-func (m *JWTManager) ParseRefresh(tokenStr string) (*Claims, error) {
-	return m.parse(tokenStr, tokenTypeRefresh)
-}
-
-func (m *JWTManager) parse(tokenStr, expectTyp string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
@@ -148,7 +102,7 @@ func (m *JWTManager) parse(tokenStr, expectTyp string) (*Claims, error) {
 	if !ok || !token.Valid {
 		return nil, ErrInvalidToken
 	}
-	if claims.Typ != expectTyp {
+	if claims.Typ != tokenTypeAccess {
 		return nil, ErrInvalidToken
 	}
 	return claims, nil

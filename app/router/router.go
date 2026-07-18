@@ -7,10 +7,7 @@ import (
 )
 
 var (
-	// 无需认证的路由
 	freeRouterGroups = make([]func(*gin.RouterGroup), 0)
-
-	// 需要认证的路由
 	authRouterGroups = make([]func(*gin.RouterGroup, gin.HandlerFunc), 0)
 )
 
@@ -30,25 +27,21 @@ func InitRouter(engine *gin.Engine, authMiddleware gin.HandlerFunc) {
 	registerBusinessRouter(engine, authMiddleware)
 }
 
-// registerBaseRouter 注册基础路由
 func registerBaseRouter(engine *gin.Engine) {
 	engine.GET("/ping", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{
-			"code":    http.StatusOK,
-			"message": "pong",
+			"code": 200,
+			"msg":  "pong",
 		})
 	})
 }
 
-// registerBusinessRouter 注册业务路由
 func registerBusinessRouter(engine *gin.Engine, authMiddleware gin.HandlerFunc) {
-	v1 := engine.Group("/api/v1")
-
+	root := engine.Group("")
 	for _, f := range freeRouterGroups {
-		f(v1)
+		f(root)
 	}
-
 	for _, f := range authRouterGroups {
-		f(v1, authMiddleware)
+		f(root, authMiddleware)
 	}
 }
