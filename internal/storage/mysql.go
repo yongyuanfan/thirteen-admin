@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"clash-admin/internal/config"
+	"thirteen-admin/internal/config"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

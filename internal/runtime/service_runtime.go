@@ -1,12 +1,12 @@
 package runtime
 
 import (
-	"clash-admin/app"
-	"clash-admin/internal/config"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"thirteen-admin/app"
+	"thirteen-admin/internal/config"
 
 	"github.com/gin-gonic/gin"
 )

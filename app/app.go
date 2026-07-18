@@ -3,13 +3,13 @@ package app
 import (
 	"fmt"
 
-	"clash-admin/app/handlers"
-	"clash-admin/app/middlewares"
-	"clash-admin/app/router"
-	"clash-admin/app/seeds"
-	"clash-admin/app/services"
-	"clash-admin/internal/config"
-	"clash-admin/internal/storage"
+	"thirteen-admin/app/handlers"
+	"thirteen-admin/app/middlewares"
+	"thirteen-admin/app/router"
+	"thirteen-admin/app/seeds"
+	"thirteen-admin/app/services"
+	"thirteen-admin/internal/config"
+	"thirteen-admin/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,12 +51,6 @@ func Bootstrap(engine *gin.Engine) error {
 	authService := services.NewAuthService(db, rdb, jwtManager, captchaStore)
 	authHandler := handlers.NewAuthHandler(authService)
 	router.RegisterAuthRoutes(authHandler)
-
-	userManageSvc := services.NewUserManageService(db)
-	roleManageSvc := services.NewRoleManageService(db)
-	menuManageSvc := services.NewMenuManageService(db)
-	systemManageHandler := handlers.NewSystemManageHandler(userManageSvc, roleManageSvc, menuManageSvc)
-	router.RegisterSystemManageRoutes(systemManageHandler)
 
 	router.InitRouter(engine, middlewares.Auth(jwtManager))
 	return nil

@@ -3,7 +3,7 @@ package textx
 import "testing"
 
 func TestStripDocumentArtifactReferencesRemovesKnownURLAndFileName(t *testing.T) {
-	url := "http://192.168.2.161:9000/clash-admin/presentations/demo-20260609143551.pptx"
+	url := "http://192.168.2.161:9000/thirteen-admin/presentations/demo-20260609143551.pptx"
 	content := "已为你生成完成，下载地址：" + url + "，文件名：demo-20260609143551.pptx"
 	files := []DocumentArtifactRef{{
 		StorageURL:  url,

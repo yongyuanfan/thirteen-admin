@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"clash-admin/cmd"
+	"thirteen-admin/cmd"
 
 	"github.com/joho/godotenv"
 )

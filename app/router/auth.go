@@ -1,7 +1,7 @@
 package router
 
 import (
-	"clash-admin/app/handlers"
+	"thirteen-admin/app/handlers"
 
 	"github.com/gin-gonic/gin"
 )

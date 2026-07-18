@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	"clash-admin/app/services"
-	"clash-admin/internal/base/handler"
+	"thirteen-admin/app/services"
+	"thirteen-admin/internal/base/handler"
 
 	"github.com/gin-gonic/gin"
 )

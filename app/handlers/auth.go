@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strings"
 
-	"clash-admin/app/middlewares"
-	"clash-admin/app/services"
-	"clash-admin/internal/base/handler"
+	"thirteen-admin/app/middlewares"
+	"thirteen-admin/app/services"
+	"thirteen-admin/internal/base/handler"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

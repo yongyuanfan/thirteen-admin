@@ -1,4 +1,4 @@
-module clash-admin
+module thirteen-admin
 
 go 1.25.1
 

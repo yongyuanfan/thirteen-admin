@@ -5,6 +5,6 @@ type Logging struct {
 	Enabled bool `yaml:"enabled"`
 	// Level 日志级别：debug | info | warn | error，默认 info。
 	Level string `yaml:"level"`
-	// FilePath JSON 日志文件路径，默认 runtime/logs/clash-admin.log。
+	// FilePath JSON 日志文件路径，默认 runtime/logs/thirteen-admin.log。
 	FilePath string `yaml:"file_path"`
 }

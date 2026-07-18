@@ -1,9 +1,9 @@
 package runtime
 
 import (
-	"clash-admin/internal/logging"
 	"fmt"
 	"log"
+	"thirteen-admin/internal/logging"
 )
 
 func logCoref(format string, args ...any) {

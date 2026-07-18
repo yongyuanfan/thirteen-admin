@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"clash-admin/internal/config"
+	"thirteen-admin/internal/config"
 )
 
 // Init 按配置初始化所有存储组件。

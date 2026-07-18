@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"time"
 
-	"clash-admin/internal/logging"
+	"thirteen-admin/internal/logging"
 
 	"github.com/redis/go-redis/v9"
 )

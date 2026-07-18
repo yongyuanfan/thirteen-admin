@@ -1,13 +1,13 @@
 package logging_test
 
 import (
-	"clash-admin/internal/config"
-	"clash-admin/internal/logging"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"thirteen-admin/internal/config"
+	"thirteen-admin/internal/logging"
 )
 
 func TestInitDisabled(t *testing.T) {
@@ -33,7 +33,7 @@ func TestInitEnabledWritesJSON(t *testing.T) {
 	t.Cleanup(func() { _ = logging.Close() })
 
 	dir := t.TempDir()
-	logPath := filepath.Join(dir, "nested", "clash-admin.log")
+	logPath := filepath.Join(dir, "nested", "thirteen-admin.log")
 
 	if err := logging.Init(config.Logging{
 		Enabled:  true,
@@ -92,7 +92,7 @@ func TestInitInvalidLevelFallsBackToInfo(t *testing.T) {
 	t.Cleanup(func() { _ = logging.Close() })
 
 	dir := t.TempDir()
-	logPath := filepath.Join(dir, "clash-admin.log")
+	logPath := filepath.Join(dir, "thirteen-admin.log")
 
 	if err := logging.Init(config.Logging{
 		Enabled:  true,
@@ -134,7 +134,7 @@ func TestInitDefaultFilePathWhenEmpty(t *testing.T) {
 
 	logging.Info("default path message")
 
-	logPath := filepath.Join(dir, "runtime", "logs", "clash-admin.log")
+	logPath := filepath.Join(dir, "runtime", "logs", "thirteen-admin.log")
 	if _, err := os.Stat(logPath); err != nil {
 		t.Fatalf("default log file stat error = %v", err)
 	}
@@ -144,7 +144,7 @@ func TestInitLevelFiltersDebug(t *testing.T) {
 	t.Cleanup(func() { _ = logging.Close() })
 
 	dir := t.TempDir()
-	logPath := filepath.Join(dir, "clash-admin.log")
+	logPath := filepath.Join(dir, "thirteen-admin.log")
 
 	if err := logging.Init(config.Logging{
 		Enabled:  true,
@@ -174,7 +174,7 @@ func TestDebugAndErrorLevels(t *testing.T) {
 	t.Cleanup(func() { _ = logging.Close() })
 
 	dir := t.TempDir()
-	logPath := filepath.Join(dir, "clash-admin.log")
+	logPath := filepath.Join(dir, "thirteen-admin.log")
 
 	if err := logging.Init(config.Logging{
 		Enabled:  true,

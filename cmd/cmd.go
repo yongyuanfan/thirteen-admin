@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	"clash-admin/cmd/server"
+	"thirteen-admin/cmd/server"
 
 	"github.com/spf13/cobra"
 )
 
 var rootCommand = &cobra.Command{
-	Use:   "clash-admin",
+	Use:   "thirteen-admin",
 	Short: "Vision AI command line tool",
 }
 

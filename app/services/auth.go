@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"clash-admin/app/models"
-	"clash-admin/internal/base/model"
-	"clash-admin/internal/base/service"
+	"thirteen-admin/internal/base/model"
+	"thirteen-admin/internal/base/service"
 
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"

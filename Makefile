@@ -1,4 +1,4 @@
-# clash-admin 构建与部署 Makefile
+# thirteen-admin 构建与部署 Makefile
 #
 # 常用命令：
 #   make proto                          重新生成 gRPC 代码
@@ -15,7 +15,7 @@
 
 # 输出目录与可执行文件名
 BIN_DIR := bin
-BIN := $(BIN_DIR)/clash-admin-server
+BIN := $(BIN_DIR)/thirteen-admin-server
 
 # 交叉编译目标平台（测试服务器为 Linux amd64）
 GOOS := linux
@@ -37,7 +37,7 @@ REMOTE_PATH := ~/
 
 # 测试环境 registry 地址
 DOCKER_REGISTRY := 148.70.103.64:5000
-DOCKER_IMAGE := clash-admin-server
+DOCKER_IMAGE := thirteen-admin-server
 # 镜像标签，可通过命令行覆盖，例如：make push-image IMAGE_TAG=1.0.4
 IMAGE_TAG ?= latest
 # 多架构构建目标：Apple Silicon / ARM 服务器 + x86_64 服务器
@@ -46,7 +46,7 @@ DOCKER_PLATFORMS := linux/amd64
 # buildx 跨次构建缓存 tag，与业务镜像 tag 独立
 CACHE_REF := $(DOCKER_REGISTRY)/$(DOCKER_IMAGE):buildcache
 
-# 交叉编译 Linux amd64 静态二进制，产物位于 bin/clash-admin-server
+# 交叉编译 Linux amd64 静态二进制，产物位于 bin/thirteen-admin-server
 build-linux:
 	mkdir -p $(BIN_DIR)
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \

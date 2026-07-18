@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"clash-admin/internal/config"
+	"thirteen-admin/internal/config"
 
 	"github.com/gin-gonic/gin"
 )

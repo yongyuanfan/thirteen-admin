@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"clash-admin/internal/config"
+	"thirteen-admin/internal/config"
 )
 
 func TestIssueAndParseTokenPair(t *testing.T) {

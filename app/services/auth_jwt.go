@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"clash-admin/internal/config"
+	"thirteen-admin/internal/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

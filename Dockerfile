@@ -25,22 +25,22 @@ COPY internal/ /src/internal/
 COPY main.go /src/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build,id=clash-admin-gobuild-${TARGETOS}-${TARGETARCH} \
+    --mount=type=cache,target=/root/.cache/go-build,id=thirteen-admin-gobuild-${TARGETOS}-${TARGETARCH} \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -ldflags="-s -w" -o /out/clash-admin-server ./main.go
+    go build -trimpath -ldflags="-s -w" -o /out/thirteen-admin-server ./main.go
 
 # 应用程序执行镜像构建
 FROM yongyuanfan/golang-app:1.25.11.beta1 AS runtime
 
 WORKDIR /app
 
-COPY --from=builder --chmod=0755 /out/clash-admin-server /app/clash-admin-server
+COPY --from=builder --chmod=0755 /out/thirteen-admin-server /app/thirteen-admin-server
 
 COPY ./.env.example /app/.env.example
 COPY ./config/settings.container.yml /app/config/settings.yml
 COPY ./public/ /app/public/
 
-ENV APP_BIN=/app/clash-admin-server
+ENV APP_BIN=/app/thirteen-admin-server
 
 EXPOSE 8080
 

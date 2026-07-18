@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"clash-admin/internal/config"
+	"thirteen-admin/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )

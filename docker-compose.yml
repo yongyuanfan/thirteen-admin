@@ -1,7 +1,7 @@
 services:
-  clash-admin-server:
-    image: 148.70.103.64:5000/clash-admin-server:1.0.0
-    container_name: clash-admin-server
+  thirteen-admin-server:
+    image: 148.70.103.64:5000/thirteen-admin-server:1.0.0
+    container_name: thirteen-admin-server
     restart: unless-stopped
     ports:
       - "8080:8080"

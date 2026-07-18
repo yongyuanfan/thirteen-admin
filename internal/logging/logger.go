@@ -1,16 +1,16 @@
 package logging
 
 import (
-	"clash-admin/internal/config"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"thirteen-admin/internal/config"
 )
 
-const defaultFilePath = "runtime/logs/clash-admin.log"
+const defaultFilePath = "runtime/logs/thirteen-admin.log"
 
 var (
 	mu       sync.Mutex

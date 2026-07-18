@@ -1,12 +1,12 @@
 package runtime
 
 import (
-	"clash-admin/internal/config"
-	"clash-admin/internal/logging"
-	"clash-admin/internal/storage"
 	"context"
 	"os"
 	"os/signal"
+	"thirteen-admin/internal/config"
+	"thirteen-admin/internal/logging"
+	"thirteen-admin/internal/storage"
 	"time"
 )
 

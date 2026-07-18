@@ -1,9 +1,9 @@
 ---
-description: clash-admin 后端分层目录与开发规范（新增业务必须遵守）
+description: thirteen-admin 后端分层目录与开发规范（新增业务必须遵守）
 alwaysApply: true
 ---
 
-# clash-admin 后端架构规范
+# thirteen-admin 后端架构规范
 
 ## 目录职责
 

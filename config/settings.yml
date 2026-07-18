@@ -1,6 +1,6 @@
 application:
   mode: prod
-  name: clash-admin
+  name: thirteen-admin
   http:
     enabled: true
     host: 0.0.0.0
@@ -12,7 +12,7 @@ application:
   logging:
     enabled: true
     level: info
-    file_path: runtime/logs/clash-admin.log
+    file_path: runtime/logs/thirteen-admin.log
   storage:
     mysql:
       enabled: true
@@ -20,7 +20,7 @@ application:
       port: 3306
       user: root
       password: 123456
-      database: clash-admin
+      database: thirteen-admin
       charset: utf8mb4
     redis:
       enabled: true
@@ -34,4 +34,4 @@ application:
       port: 5432
       user: root
       password: 123456
-      database: clash-admin
+      database: thirteen-admin
