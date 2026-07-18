@@ -23,34 +23,38 @@
       "free": 82.5
     },
     "mem": {
-      "total": 16,
-      "used": 8,
-      "free": 8,
-      "usage": 50.0
+      "total": 0.5,
+      "used": 0.2,
+      "free": 0.3,
+      "usage": 40.0
     },
-    "jvm": {
+    "go": {
       "total": 512,
       "used": 256,
       "free": 256,
       "usage": 50.0,
-      "name": "OpenJDK",
-      "version": "17",
-      "startTime": "2024-01-01 00:00:00",
-      "runTime": "1天2小时",
-      "home": "/usr/lib/jvm",
-      "inputArgs": "-Xms256m"
+      "name": "go",
+      "version": "go1.25.1",
+      "startTime": "2026-07-18 15:00:00",
+      "runTime": "1小时2分钟",
+      "goroot": "/usr/local/go",
+      "goroutines": 42,
+      "compiler": "gc",
+      "goos": "darwin",
+      "goarch": "arm64",
+      "cmdLine": "thirteen-admin server -c config/settings.local.yml"
     },
     "sys": {
       "computerName": "host",
-      "osName": "Linux",
+      "osName": "darwin",
       "computerIp": "10.0.0.1",
-      "osArch": "amd64",
+      "osArch": "arm64",
       "userDir": "/app"
     },
     "sysFiles": [
       {
         "dirName": "/",
-        "sysTypeName": "ext4",
+        "sysTypeName": "darwin",
         "typeName": "/",
         "total": "100GB",
         "free": "40GB",
@@ -67,9 +71,21 @@
 | 块 | 字段 | 说明 |
 |----|------|------|
 | `cpu` | `cpuNum/used/sys/free` | CPU 核数与占用百分比 |
-| `mem` | `total/used/free/usage` | 内存（GB 或后端约定单位） |
-| `jvm` | 见上 | 运行时信息（Go 实现可映射为进程/运行时等价信息，字段名保持兼容） |
+| `mem` | `total/used/free/usage` | 进程内存（GB） |
+| `go` | 见下 | Go 运行时信息 |
 | `sys` | 主机与 OS | |
 | `sysFiles` | 磁盘分区列表 | |
 
-> 注：原若依后端为 Java/JVM 指标。Go 实现时应尽量保持**字段名与结构兼容**，数值语义用进程/runtime/系统指标填充。
+#### `go` 字段
+
+| 字段 | 说明 |
+|------|------|
+| `total/used/free/usage` | 运行时内存（MB）：`Sys` / `Alloc` / 剩余 / 使用率 |
+| `name` | 运行时名称，固定为 `go` |
+| `version` | `runtime.Version()`，如 `go1.25.1` |
+| `startTime` / `runTime` | 进程启动时间与运行时长 |
+| `goroot` | `runtime.GOROOT()` |
+| `goroutines` | 当前 goroutine 数量 |
+| `compiler` | 编译器（通常 `gc`） |
+| `goos` / `goarch` | 编译目标 OS / 架构 |
+| `cmdLine` | 启动命令行（`os.Args`） |
