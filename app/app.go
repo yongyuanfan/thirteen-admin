@@ -5,8 +5,14 @@ import (
 	"path/filepath"
 
 	"thirteen-admin/app/handlers"
+	hmonitor "thirteen-admin/app/handlers/monitor"
+	hsystem "thirteen-admin/app/handlers/system"
+	htool "thirteen-admin/app/handlers/tool"
 	"thirteen-admin/app/middlewares"
 	"thirteen-admin/app/router"
+	rmonitor "thirteen-admin/app/router/monitor"
+	rsystem "thirteen-admin/app/router/system"
+	rtool "thirteen-admin/app/router/tool"
 	"thirteen-admin/app/seeds"
 	"thirteen-admin/app/services"
 	"thirteen-admin/internal/config"
@@ -68,41 +74,41 @@ func Bootstrap(engine *gin.Engine) error {
 
 	authHandler := handlers.NewAuthHandler(authService)
 	commonHandler := handlers.NewCommonHandler(fileService)
-	deptHandler := handlers.NewDeptHandler(deptService)
-	menuHandler := handlers.NewMenuHandler(menuService)
-	postHandler := handlers.NewPostHandler(postService)
-	configHandler := handlers.NewConfigHandler(configService)
-	dictHandler := handlers.NewDictHandler(dictService)
-	noticeHandler := handlers.NewNoticeHandler(noticeService)
-	userHandler := handlers.NewUserHandler(userService, fileService)
-	roleHandler := handlers.NewRoleHandler(roleService)
-	operLogHandler := handlers.NewOperLogHandler(operLogService)
-	logininforHandler := handlers.NewLogininforHandler(logininforService)
-	onlineHandler := handlers.NewOnlineHandler(onlineSvc)
-	cacheHandler := handlers.NewCacheHandler(cacheService)
-	serverHandler := handlers.NewServerHandler(serverService)
-	jobHandler := handlers.NewJobHandler(jobService)
-	jobLogHandler := handlers.NewJobLogHandler(jobLogService)
-	genHandler := handlers.NewGenHandler(genService)
+	deptHandler := hsystem.NewDeptHandler(deptService)
+	menuHandler := hsystem.NewMenuHandler(menuService)
+	postHandler := hsystem.NewPostHandler(postService)
+	configHandler := hsystem.NewConfigHandler(configService)
+	dictHandler := hsystem.NewDictHandler(dictService)
+	noticeHandler := hsystem.NewNoticeHandler(noticeService)
+	userHandler := hsystem.NewUserHandler(userService, fileService)
+	roleHandler := hsystem.NewRoleHandler(roleService)
+	operLogHandler := hmonitor.NewOperLogHandler(operLogService)
+	logininforHandler := hmonitor.NewLogininforHandler(logininforService)
+	onlineHandler := hmonitor.NewOnlineHandler(onlineSvc)
+	cacheHandler := hmonitor.NewCacheHandler(cacheService)
+	serverHandler := hmonitor.NewServerHandler(serverService)
+	jobHandler := hmonitor.NewJobHandler(jobService)
+	jobLogHandler := hmonitor.NewJobLogHandler(jobLogService)
+	genHandler := htool.NewGenHandler(genService)
 
 	router.RegisterAuthRoutes(authHandler)
 	router.RegisterCommonRoutes(commonHandler)
-	router.RegisterDeptRoutes(deptHandler)
-	router.RegisterMenuRoutes(menuHandler)
-	router.RegisterPostRoutes(postHandler)
-	router.RegisterConfigRoutes(configHandler)
-	router.RegisterDictRoutes(dictHandler)
-	router.RegisterNoticeRoutes(noticeHandler)
-	router.RegisterUserRoutes(userHandler)
-	router.RegisterRoleRoutes(roleHandler)
-	router.RegisterOperLogRoutes(operLogHandler)
-	router.RegisterLogininforRoutes(logininforHandler)
-	router.RegisterOnlineRoutes(onlineHandler)
-	router.RegisterCacheRoutes(cacheHandler)
-	router.RegisterServerRoutes(serverHandler)
-	router.RegisterJobRoutes(jobHandler)
-	router.RegisterJobLogRoutes(jobLogHandler)
-	router.RegisterGenRoutes(genHandler)
+	rsystem.RegisterDeptRoutes(deptHandler)
+	rsystem.RegisterMenuRoutes(menuHandler)
+	rsystem.RegisterPostRoutes(postHandler)
+	rsystem.RegisterConfigRoutes(configHandler)
+	rsystem.RegisterDictRoutes(dictHandler)
+	rsystem.RegisterNoticeRoutes(noticeHandler)
+	rsystem.RegisterUserRoutes(userHandler)
+	rsystem.RegisterRoleRoutes(roleHandler)
+	rmonitor.RegisterOperLogRoutes(operLogHandler)
+	rmonitor.RegisterLogininforRoutes(logininforHandler)
+	rmonitor.RegisterOnlineRoutes(onlineHandler)
+	rmonitor.RegisterCacheRoutes(cacheHandler)
+	rmonitor.RegisterServerRoutes(serverHandler)
+	rmonitor.RegisterJobRoutes(jobHandler)
+	rmonitor.RegisterJobLogRoutes(jobLogHandler)
+	rtool.RegisterGenRoutes(genHandler)
 
 	router.InitRouter(engine, middlewares.Auth(jwtManager))
 	return nil
