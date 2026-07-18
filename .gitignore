@@ -30,3 +30,6 @@ coverage.out
 # logs
 runtime/*
 !runtime/.gitkeep
+
+# uploaded files
+profile/
