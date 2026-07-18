@@ -454,13 +454,14 @@ func (s *UserService) ImportData(file multipart.File, updateSupport bool, operat
 
 func (s *UserService) userDetailMap(u *models.User, withRelations bool) (map[string]any, error) {
 	m := UserToMap(u)
-	if withRelations {
-		if u.DeptID != nil && *u.DeptID > 0 {
-			var dept models.Dept
-			if err := s.DB.Where("id = ? AND del_flag = ?", *u.DeptID, "0").First(&dept).Error; err == nil {
-				m["dept"] = DeptToMap(&dept)
-			}
+	// 列表页需要展示部门名称，部门信息始终附带
+	if u.DeptID != nil && *u.DeptID > 0 {
+		var dept models.Dept
+		if err := s.DB.Where("id = ? AND del_flag = ?", *u.DeptID, "0").First(&dept).Error; err == nil {
+			m["dept"] = DeptToMap(&dept)
 		}
+	}
+	if withRelations {
 		roleIDs, err := s.userRoleIDs(u.ID)
 		if err != nil {
 			return nil, err
