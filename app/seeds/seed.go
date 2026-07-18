@@ -12,6 +12,26 @@ import (
 	"gorm.io/gorm"
 )
 
+// CleanupObsolete 清理已废弃的菜单与关联（幂等）。
+func CleanupObsolete(db *gorm.DB) error {
+	var ids []uint
+	if err := db.Model(&models.Menu{}).
+		Where("path = ? OR component = ? OR perms = ?", "druid", "monitor/druid/index", "monitor:druid:list").
+		Pluck("id", &ids).Error; err != nil {
+		return fmt.Errorf("find druid menus: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	if err := db.Where("menu_id IN ?", ids).Delete(&models.RoleMenu{}).Error; err != nil {
+		return fmt.Errorf("delete druid role_menu: %w", err)
+	}
+	if err := db.Where("id IN ?", ids).Delete(&models.Menu{}).Error; err != nil {
+		return fmt.Errorf("delete druid menus: %w", err)
+	}
+	return nil
+}
+
 // SeedIfEmpty 当用户表为空时执行 ry.sql 初始化。
 func SeedIfEmpty(db *gorm.DB) error {
 	var count int64

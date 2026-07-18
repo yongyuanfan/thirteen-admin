@@ -57,7 +57,6 @@
 | 路径 | 用途 |
 |------|------|
 | `/swagger-ui/index.html` | API 文档页（可选） |
-| `/druid/login.html` | 数据源监控（可选） |
 | `/v3/api-docs/*` | OpenAPI（可选，开发代理已配置） |
 
 ## 数据库

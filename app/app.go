@@ -35,6 +35,9 @@ func Bootstrap(engine *gin.Engine) error {
 	if err := seeds.SeedIfEmpty(db); err != nil {
 		return fmt.Errorf("seed: %w", err)
 	}
+	if err := seeds.CleanupObsolete(db); err != nil {
+		return fmt.Errorf("cleanup: %w", err)
+	}
 
 	profileRoot := filepath.Join(pathx.ResolveProjectRoot(), "profile")
 	engine.Static("/profile", profileRoot)
