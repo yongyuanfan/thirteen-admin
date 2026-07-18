@@ -1,0 +1,13 @@
+.git
+.DS_Store
+.env
+bin
+tmp
+bugs
+runtime/
+docs/
+*.md
+config/settings.local.yml
+config/settings.yml
+docker-compose.yml
+Makefile

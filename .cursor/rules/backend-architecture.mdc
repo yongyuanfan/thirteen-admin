@@ -1,0 +1,61 @@
+---
+description: clash-admin 后端分层目录与开发规范（新增业务必须遵守）
+alwaysApply: true
+---
+
+# clash-admin 后端架构规范
+
+## 目录职责
+
+| 路径 | 职责 | 示例 |
+|------|------|------|
+| `app/handlers/` | HTTP 入参校验、调 service、写响应 | `auth.go` → `AuthHandler` |
+| `app/services/` | 业务逻辑、JWT/验证码等 | `auth.go` / `auth_jwt.go` |
+| `app/models/` | GORM 模型 | `user.go` |
+| `app/seeds/` | AutoMigrate + 种子数据 | `user.go` |
+| `app/middlewares/` | 中间件 | `auth.go` |
+| `app/router/` | 路由注册（唯一入口） | `router.go` + `auth.go` |
+| `app/app.go` | Bootstrap 装配 | 注入依赖并 `InitRouter` |
+| `internal/base/handler` | 响应信封、错误码、Handler 基类 | `Success` / `Fail` |
+| `internal/base/service` | Service 基类 | 持有 `*gorm.DB` |
+| `internal/base/model` | Model 基类、`StringSlice` | `BaseModel` |
+| `internal/{config,storage,logging,runtime,utils}` | 基础设施，无业务域逻辑 | — |
+
+禁止再建 `app/auth` 式域包；业务按层拆文件，用域前缀命名（如 `auth.go`）。
+
+## 依赖方向（禁止反向）
+
+```
+router → handlers → services → models → internal/base/model
+                ↘ middlewares → services
+                ↘ internal/base/handler
+seeds → models
+app.Bootstrap → handlers/services/seeds/middlewares/router
+```
+
+- `handlers` **不得** import `router`
+- `services` / `models` / `seeds` **不得** import `handlers`
+- `internal/*` **不得**依赖 `app/*`（`runtime` 调用 `app.Bootstrap` 除外）
+
+## 新增业务清单
+
+1. `app/models/<domain>.go` — 模型（优先嵌入 `model.BaseModel`）
+2. `app/services/<domain>.go` — 业务（可嵌入 `service.Service`）
+3. `app/handlers/<domain>.go` — Handler（嵌入 `handler.Handler`，用 `Success`/`Fail`）
+4. `app/router/<domain>.go` — `RegisterXxxRoutes`，内部用 `RegisterFreeRouter` / `RegisterAuthRouter`
+5. 需要种子时：`app/seeds/<domain>.go`
+6. 需要鉴权中间件时：复用或扩展 `app/middlewares`
+7. 在 `app/app.go` 的 `Bootstrap` 中装配并调用 `router.RegisterXxxRoutes`，再 `InitRouter`
+
+## API 约定
+
+- 路径前缀：`/api/v1`
+- 响应：`{ "code", "msg", "data" }`，成功码 `"0000"`，HTTP 始终 200（业务错误也走信封）
+- JSON 字段 camelCase（如 `userName`、`refreshToken`）
+- 鉴权头：`Authorization: Bearer <token>`；Context key 用 `middlewares.ContextUserIDKey`
+
+## 编码注意
+
+- 注释用中文；提交前 `gofmt`
+- 优先标准库；改动能小则小
+- 新增后执行：`go test ./...` 与 `go build ./...`

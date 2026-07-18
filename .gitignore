@@ -1,0 +1,32 @@
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Go build artifacts
+bin/
+dist/
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+coverage.out
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# logs
+runtime/*
+!runtime/.gitkeep
