@@ -50,7 +50,8 @@ func (s *CaptchaService) Generate(ctx context.Context) (id, b64s string, err err
 	if err != nil {
 		return "", "", err
 	}
-	b64s = "data:image/png;base64," + base64.StdEncoding.EncodeToString(img)
+	// 前端会拼接 data:image/gif;base64, 前缀，此处只返回纯 base64
+	b64s = base64.StdEncoding.EncodeToString(img)
 	if s.rdb != nil {
 		if err := s.rdb.Set(ctx, captchaKeyPref+id, code, 2*time.Minute).Err(); err != nil {
 			return "", "", err
