@@ -17,7 +17,7 @@ func (e *LogininforHandler) svc(c *gin.Context) (*services.LogininforService, er
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		return nil, err
 	}
-	return services.NewLogininforService(e.Orm, runtime.Redis()), nil
+	return services.NewLogininforService(e.Orm, runtime.Cache()), nil
 }
 
 // List GET /monitor/logininfor/list

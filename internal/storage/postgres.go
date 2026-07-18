@@ -25,12 +25,14 @@ func InitPostgres(postgresConfig config.Postgres) error {
 		postgresConfig.Database,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("connect postgres: %w", err)
 	}
 
-	postgresDB = db
+	postgresDB = conn
+	db = conn
+	dbDriver = "postgres"
 	return nil
 }
 

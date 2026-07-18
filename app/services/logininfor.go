@@ -8,8 +8,9 @@ import (
 	"thirteen-admin/app/models"
 	"thirteen-admin/internal/base/service"
 
+	"thirteen-admin/internal/storage"
+
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -18,12 +19,12 @@ const loginLockKeyPref = "login:lock:"
 // LogininforService 登录日志业务。
 type LogininforService struct {
 	service.Service
-	rdb *redis.Client
+	cache storage.Cache
 }
 
 // NewLogininforService 创建登录日志服务。
-func NewLogininforService(db *gorm.DB, rdb *redis.Client) *LogininforService {
-	return &LogininforService{Service: service.New(db), rdb: rdb}
+func NewLogininforService(db *gorm.DB, cache storage.Cache) *LogininforService {
+	return &LogininforService{Service: service.New(db), cache: cache}
 }
 
 func (s *LogininforService) buildQuery(ctx *gin.Context) *gorm.DB {
@@ -73,10 +74,10 @@ func (s *LogininforService) Unlock(ctx context.Context, userName string) error {
 	if userName == "" {
 		return errors.New("用户名不能为空")
 	}
-	if s.rdb == nil {
+	if s.cache == nil {
 		return nil
 	}
-	return s.rdb.Del(ctx, loginLockKey(userName)).Err()
+	return s.cache.Del(ctx, loginLockKey(userName))
 }
 
 // Clean 清空登录日志。

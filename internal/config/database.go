@@ -1,13 +1,13 @@
 package config
 
-type Storage struct {
+// Database 数据库配置，通过 driver 选择具体驱动。
+type Database struct {
+	Driver   string   `yaml:"driver"`
 	MySQL    MySQL    `yaml:"mysql"`
-	Redis    Redis    `yaml:"redis"`
 	Postgres Postgres `yaml:"postgres"`
 }
 
 type MySQL struct {
-	Enabled  bool   `yaml:"enabled"`
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
 	User     string `yaml:"user"`
@@ -16,16 +16,7 @@ type MySQL struct {
 	Charset  string `yaml:"charset"`
 }
 
-type Redis struct {
-	Enabled  bool   `yaml:"enabled"`
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Password string `yaml:"password"`
-	DB       int    `yaml:"db"`
-}
-
 type Postgres struct {
-	Enabled  bool   `yaml:"enabled"`
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
 	User     string `yaml:"user"`

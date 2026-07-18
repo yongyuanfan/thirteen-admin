@@ -2,15 +2,15 @@ package runtime
 
 import (
 	"thirteen-admin/app/services"
+	"thirteen-admin/internal/storage"
 
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // 进程级共享依赖（连接池与无请求状态组件）。
 var (
 	db      *gorm.DB
-	rdb     *redis.Client
+	cache   storage.Cache
 	jwt     *services.JWTManager
 	online  *services.OnlineService
 	captcha *services.CaptchaService
@@ -23,11 +23,11 @@ func SetDB(v *gorm.DB) { db = v }
 // DB 返回全局 DB 连接池。
 func DB() *gorm.DB { return db }
 
-// SetRedis 设置全局 Redis 客户端。
-func SetRedis(v *redis.Client) { rdb = v }
+// SetCache 设置全局缓存。
+func SetCache(v storage.Cache) { cache = v }
 
-// Redis 返回全局 Redis 客户端。
-func Redis() *redis.Client { return rdb }
+// Cache 返回全局缓存。
+func Cache() storage.Cache { return cache }
 
 // SetJWT 设置 JWT 管理器。
 func SetJWT(v *services.JWTManager) { jwt = v }

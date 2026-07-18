@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"thirteen-admin/internal/storage"
 )
 
 const onlineKeyPref = "online:token:"
@@ -23,18 +23,18 @@ type OnlineUser struct {
 	LoginTime     int64  `json:"loginTime"`
 }
 
-// OnlineService 在线用户（Redis）。
+// OnlineService 在线用户。
 type OnlineService struct {
-	rdb *redis.Client
-	ttl time.Duration
+	cache storage.Cache
+	ttl   time.Duration
 }
 
 // NewOnlineService 创建在线用户服务。
-func NewOnlineService(rdb *redis.Client, ttl time.Duration) *OnlineService {
+func NewOnlineService(cache storage.Cache, ttl time.Duration) *OnlineService {
 	if ttl <= 0 {
 		ttl = 2 * time.Hour
 	}
-	return &OnlineService{rdb: rdb, ttl: ttl}
+	return &OnlineService{cache: cache, ttl: ttl}
 }
 
 func (s *OnlineService) key(token string) string {
@@ -43,43 +43,43 @@ func (s *OnlineService) key(token string) string {
 
 // Put 写入在线会话。
 func (s *OnlineService) Put(ctx context.Context, u OnlineUser) error {
-	if s.rdb == nil {
+	if s.cache == nil {
 		return nil
 	}
 	b, err := json.Marshal(u)
 	if err != nil {
 		return err
 	}
-	return s.rdb.Set(ctx, s.key(u.TokenID), b, s.ttl).Err()
+	return s.cache.Set(ctx, s.key(u.TokenID), string(b), s.ttl)
 }
 
 // Remove 删除会话。
 func (s *OnlineService) Remove(ctx context.Context, tokenID string) error {
-	if s.rdb == nil {
+	if s.cache == nil {
 		return nil
 	}
-	return s.rdb.Del(ctx, s.key(tokenID)).Err()
+	return s.cache.Del(ctx, s.key(tokenID))
 }
 
 // List 列出在线用户。
 func (s *OnlineService) List(ctx context.Context, ipaddr, userName string) ([]OnlineUser, error) {
-	if s.rdb == nil {
+	if s.cache == nil {
 		return []OnlineUser{}, nil
 	}
 	var cursor uint64
 	out := make([]OnlineUser, 0)
 	for {
-		keys, next, err := s.rdb.Scan(ctx, cursor, onlineKeyPref+"*", 100).Result()
+		keys, next, err := s.cache.Scan(ctx, cursor, onlineKeyPref+"*", 100)
 		if err != nil {
 			return nil, err
 		}
 		for _, k := range keys {
-			val, err := s.rdb.Get(ctx, k).Bytes()
+			val, err := s.cache.Get(ctx, k)
 			if err != nil {
 				continue
 			}
 			var u OnlineUser
-			if err := json.Unmarshal(val, &u); err != nil {
+			if err := json.Unmarshal([]byte(val), &u); err != nil {
 				continue
 			}
 			if ipaddr != "" && u.IPAddr != ipaddr {
@@ -100,12 +100,12 @@ func (s *OnlineService) List(ctx context.Context, ipaddr, userName string) ([]On
 
 // TokenExists 会话是否存在（用于强退后校验）。
 func (s *OnlineService) TokenExists(ctx context.Context, token string) (bool, error) {
-	if s.rdb == nil {
+	if s.cache == nil {
 		return true, nil
 	}
-	n, err := s.rdb.Exists(ctx, s.key(token)).Result()
+	ok, err := s.cache.Exists(ctx, s.key(token))
 	if err != nil {
-		return false, fmt.Errorf("redis exists: %w", err)
+		return false, fmt.Errorf("cache exists: %w", err)
 	}
-	return n > 0, nil
+	return ok, nil
 }

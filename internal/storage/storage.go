@@ -2,29 +2,41 @@ package storage
 
 import (
 	"fmt"
+	"strings"
 
 	"thirteen-admin/internal/config"
 )
 
-// Init 按配置初始化所有存储组件。
+// Init 按配置初始化数据库与缓存。
 func Init() error {
-	storageConfig := config.GetApplication().Storage
-	if storageConfig.MySQL.Enabled {
-		if err := InitMySQL(storageConfig.MySQL); err != nil {
+	app := config.GetApplication()
+
+	dbDriverName := strings.ToLower(strings.TrimSpace(app.Database.Driver))
+	switch dbDriverName {
+	case "mysql", "":
+		if err := InitMySQL(app.Database.MySQL); err != nil {
 			return fmt.Errorf("init mysql: %w", err)
 		}
-	}
-
-	if storageConfig.Postgres.Enabled {
-		if err := InitPostgres(storageConfig.Postgres); err != nil {
+	case "postgres":
+		if err := InitPostgres(app.Database.Postgres); err != nil {
 			return fmt.Errorf("init postgres: %w", err)
 		}
+	default:
+		return fmt.Errorf("unsupported database driver: %s", app.Database.Driver)
 	}
 
-	if storageConfig.Redis.Enabled {
-		if err := InitRedis(storageConfig.Redis); err != nil {
+	cacheDriverName := strings.ToLower(strings.TrimSpace(app.Cache.Driver))
+	switch cacheDriverName {
+	case "file", "":
+		if err := InitFileCache(app.Cache.File); err != nil {
+			return fmt.Errorf("init file cache: %w", err)
+		}
+	case "redis":
+		if err := InitRedis(app.Cache.Redis); err != nil {
 			return fmt.Errorf("init redis: %w", err)
 		}
+	default:
+		return fmt.Errorf("unsupported cache driver: %s", app.Cache.Driver)
 	}
 
 	return nil

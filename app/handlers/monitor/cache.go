@@ -17,7 +17,7 @@ type CacheHandler struct {
 }
 
 func (e CacheHandler) cacheSvc() *services.CacheService {
-	return services.NewCacheService(runtime.Redis())
+	return services.NewCacheService(runtime.Cache())
 }
 
 // GetInfo GET /monitor/cache

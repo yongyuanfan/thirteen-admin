@@ -38,7 +38,7 @@ func (e *AuthHandler) authService(c *gin.Context) (*services.AuthService, error)
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		return nil, err
 	}
-	return services.NewAuthService(e.Orm, runtime.Redis(), runtime.JWT(), runtime.Captcha(), runtime.Online()), nil
+	return services.NewAuthService(e.Orm, runtime.JWT(), runtime.Captcha(), runtime.Online()), nil
 }
 
 // Login POST /login

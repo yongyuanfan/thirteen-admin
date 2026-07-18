@@ -13,25 +13,27 @@ application:
     enabled: true
     level: info
     file_path: runtime/logs/thirteen-admin.log
-  storage:
+  database:
+    driver: mysql
     mysql:
-      enabled: true
       host: localhost
       port: 3306
       user: root
       password: 123456
-      database: thirteen-admin
+      database: thirteen-admin-icon
       charset: utf8mb4
-    redis:
-      enabled: true
-      host: localhost
-      port: 6379
-      password: 123456
-      db: 0
     postgres:
-      enabled: false
       host: localhost
       port: 5432
       user: root
       password: 123456
       database: thirteen-admin
+  cache:
+    driver: file
+    file:
+      path: runtime/cache
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      db: 0

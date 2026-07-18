@@ -10,7 +10,6 @@ import (
 	"thirteen-admin/app/models"
 	"thirteen-admin/internal/base/service"
 
-	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -25,17 +24,15 @@ var (
 // AuthService 鉴权业务。
 type AuthService struct {
 	service.Service
-	rdb     *redis.Client
 	jwt     *JWTManager
 	captcha *CaptchaService
 	online  *OnlineService
 }
 
 // NewAuthService 创建鉴权服务。
-func NewAuthService(db *gorm.DB, rdb *redis.Client, jwt *JWTManager, captcha *CaptchaService, online *OnlineService) *AuthService {
+func NewAuthService(db *gorm.DB, jwt *JWTManager, captcha *CaptchaService, online *OnlineService) *AuthService {
 	return &AuthService{
 		Service: service.New(db),
-		rdb:     rdb,
 		jwt:     jwt,
 		captcha: captcha,
 		online:  online,
@@ -279,10 +276,10 @@ func UserToMap(u *models.User) map[string]any {
 		"status":      u.Status,
 		"loginIp":     u.LoginIP,
 		"loginDate":   FormatTime(u.LoginDate),
-		"createdBy":    u.CreatedBy,
-		"createdAt":  FormatTimeVal(u.CreatedAt),
-		"updatedBy":    u.UpdatedBy,
-		"updatedAt":  FormatTimeVal(u.UpdatedAt),
+		"createdBy":   u.CreatedBy,
+		"createdAt":   FormatTimeVal(u.CreatedAt),
+		"updatedBy":   u.UpdatedBy,
+		"updatedAt":   FormatTimeVal(u.UpdatedAt),
 		"remark":      u.Remark,
 	}
 	return m

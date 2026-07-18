@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -26,7 +27,23 @@ func Load(path string) error {
 		return err
 	}
 
+	applyDefaults(&config.Application)
 	return nil
+}
+
+func applyDefaults(app *Application) {
+	if strings.TrimSpace(app.Database.Driver) == "" {
+		app.Database.Driver = "mysql"
+	}
+	if strings.TrimSpace(app.Cache.Driver) == "" {
+		app.Cache.Driver = "file"
+	}
+	if strings.TrimSpace(app.Cache.File.Path) == "" {
+		app.Cache.File.Path = "runtime/cache"
+	}
+	if strings.TrimSpace(app.Database.MySQL.Charset) == "" {
+		app.Database.MySQL.Charset = "utf8mb4"
+	}
 }
 
 // GetApplication 获取应用配置

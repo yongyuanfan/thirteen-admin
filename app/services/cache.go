@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/redis/go-redis/v9"
+	"thirteen-admin/internal/storage"
 )
 
 type cacheDef struct {
@@ -20,14 +20,14 @@ var cacheDefs = []cacheDef{
 	{Name: "login_lock", Prefix: "login:lock:", Remark: "登录失败锁定"},
 }
 
-// CacheService Redis 缓存监控。
+// CacheService 缓存监控。
 type CacheService struct {
-	rdb *redis.Client
+	cache storage.Cache
 }
 
 // NewCacheService 创建缓存服务。
-func NewCacheService(rdb *redis.Client) *CacheService {
-	return &CacheService{rdb: rdb}
+func NewCacheService(cache storage.Cache) *CacheService {
+	return &CacheService{cache: cache}
 }
 
 func (s *CacheService) defByName(name string) (cacheDef, bool) {
@@ -39,90 +39,28 @@ func (s *CacheService) defByName(name string) (cacheDef, bool) {
 	return cacheDef{}, false
 }
 
-// Overview Redis 监控概览。
+// Overview 缓存监控概览。
 func (s *CacheService) Overview(ctx context.Context) (map[string]any, error) {
-	if s.rdb == nil {
+	if s.cache == nil {
 		return map[string]any{
 			"info":         map[string]string{},
 			"dbSize":       0,
 			"commandStats": []map[string]string{},
 		}, nil
 	}
-	infoStr, err := s.rdb.Info(ctx).Result()
+	stats, err := s.cache.Stats(ctx)
 	if err != nil {
 		return nil, err
 	}
-	info := parseRedisInfo(infoStr)
-	dbSize, err := s.rdb.DBSize(ctx).Result()
-	if err != nil {
-		return nil, err
+	commandStats := stats.CommandStats
+	if commandStats == nil {
+		commandStats = []map[string]string{}
 	}
-	commandStats := parseCommandStats(infoStr)
 	return map[string]any{
-		"info":         info,
-		"dbSize":       dbSize,
+		"info":         stats.Info,
+		"dbSize":       stats.DBSize,
 		"commandStats": commandStats,
 	}, nil
-}
-
-func parseRedisInfo(info string) map[string]string {
-	out := map[string]string{}
-	for _, line := range strings.Split(info, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
-		switch key {
-		case "redis_version", "redis_mode", "tcp_port", "connected_clients",
-			"uptime_in_days", "used_memory_human", "used_cpu_user_children",
-			"maxmemory_human", "aof_enabled", "rdb_last_bgsave_status",
-			"instantaneous_input_kbps", "instantaneous_output_kbps":
-			out[key] = val
-		}
-	}
-	return out
-}
-
-func parseCommandStats(info string) []map[string]string {
-	out := make([]map[string]string, 0)
-	inCmdstat := false
-	for _, line := range strings.Split(info, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "# Commandstats") {
-			inCmdstat = true
-			continue
-		}
-		if inCmdstat {
-			if strings.HasPrefix(line, "#") {
-				break
-			}
-			if !strings.HasPrefix(line, "cmdstat_") {
-				continue
-			}
-			// cmdstat_get:calls=100,usec=50,...
-			rest := strings.TrimPrefix(line, "cmdstat_")
-			name, _, _ := strings.Cut(rest, ":")
-			calls := ""
-			if idx := strings.Index(rest, "calls="); idx >= 0 {
-				seg := rest[idx+6:]
-				if end := strings.Index(seg, ","); end >= 0 {
-					calls = seg[:end]
-				} else {
-					calls = seg
-				}
-			}
-			if name != "" {
-				out = append(out, map[string]string{"name": name, "value": calls})
-			}
-		}
-	}
-	return out
 }
 
 // GetNames 缓存名称列表。
@@ -143,13 +81,13 @@ func (s *CacheService) GetKeys(ctx context.Context, cacheName string) ([]string,
 	if !ok {
 		return []string{}, nil
 	}
-	if s.rdb == nil {
+	if s.cache == nil {
 		return []string{}, nil
 	}
 	var cursor uint64
 	keys := make([]string, 0)
 	for {
-		batch, next, err := s.rdb.Scan(ctx, cursor, d.Prefix+"*", 100).Result()
+		batch, next, err := s.cache.Scan(ctx, cursor, d.Prefix+"*", 100)
 		if err != nil {
 			return nil, err
 		}
@@ -177,8 +115,8 @@ func (s *CacheService) GetValue(ctx context.Context, cacheName, cacheKey string)
 	}
 	fullKey := d.Prefix + cacheKey
 	val := ""
-	if s.rdb != nil {
-		v, err := s.rdb.Get(ctx, fullKey).Result()
+	if s.cache != nil {
+		v, err := s.cache.Get(ctx, fullKey)
 		if err == nil {
 			val = v
 		}
@@ -194,7 +132,7 @@ func (s *CacheService) GetValue(ctx context.Context, cacheName, cacheKey string)
 // ClearCacheName 按缓存名清空。
 func (s *CacheService) ClearCacheName(ctx context.Context, cacheName string) error {
 	d, ok := s.defByName(cacheName)
-	if !ok || s.rdb == nil {
+	if !ok || s.cache == nil {
 		return nil
 	}
 	return s.deleteByPrefix(ctx, d.Prefix)
@@ -202,15 +140,15 @@ func (s *CacheService) ClearCacheName(ctx context.Context, cacheName string) err
 
 // ClearCacheKey 按 key 删除（支持完整 key 或带前缀）。
 func (s *CacheService) ClearCacheKey(ctx context.Context, cacheKey string) error {
-	if s.rdb == nil || cacheKey == "" {
+	if s.cache == nil || cacheKey == "" {
 		return nil
 	}
-	return s.rdb.Del(ctx, cacheKey).Err()
+	return s.cache.Del(ctx, cacheKey)
 }
 
 // ClearCacheAll 清空全部缓存。
 func (s *CacheService) ClearCacheAll(ctx context.Context) error {
-	if s.rdb == nil {
+	if s.cache == nil {
 		return nil
 	}
 	for _, d := range cacheDefs {
@@ -224,12 +162,12 @@ func (s *CacheService) ClearCacheAll(ctx context.Context) error {
 func (s *CacheService) deleteByPrefix(ctx context.Context, prefix string) error {
 	var cursor uint64
 	for {
-		keys, next, err := s.rdb.Scan(ctx, cursor, prefix+"*", 100).Result()
+		keys, next, err := s.cache.Scan(ctx, cursor, prefix+"*", 100)
 		if err != nil {
 			return err
 		}
 		if len(keys) > 0 {
-			if err := s.rdb.Del(ctx, keys...).Err(); err != nil {
+			if err := s.cache.Del(ctx, keys...); err != nil {
 				return err
 			}
 		}

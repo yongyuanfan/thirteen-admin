@@ -20,13 +20,13 @@ import (
 func Bootstrap(engine *gin.Engine) error {
 	appConfig := config.GetApplication()
 
-	db, err := storage.RequireMySQL()
+	db, err := storage.RequireDB()
 	if err != nil {
-		return fmt.Errorf("auth 依赖 mysql: %w", err)
+		return fmt.Errorf("auth 依赖 database: %w", err)
 	}
-	rdb, err := storage.RequireRedis()
+	cache, err := storage.RequireCache()
 	if err != nil {
-		return fmt.Errorf("auth 依赖 redis: %w", err)
+		return fmt.Errorf("auth 依赖 cache: %w", err)
 	}
 
 	if err := seeds.AutoMigrate(db); err != nil {
@@ -40,10 +40,10 @@ func Bootstrap(engine *gin.Engine) error {
 	}
 
 	runtime.SetDB(db)
-	runtime.SetRedis(rdb)
+	runtime.SetCache(cache)
 	runtime.SetJWT(services.NewJWTManager(appConfig.JWT))
-	runtime.SetOnline(services.NewOnlineService(rdb, 0))
-	runtime.SetCaptcha(services.NewCaptchaService(rdb, true))
+	runtime.SetOnline(services.NewOnlineService(cache, 0))
+	runtime.SetCaptcha(services.NewCaptchaService(cache, true))
 	runtime.SetFile(services.NewFileService())
 
 	profileRoot := filepath.Join(pathx.ResolveProjectRoot(), "profile")

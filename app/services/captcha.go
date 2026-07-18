@@ -13,20 +13,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"thirteen-admin/internal/storage"
 )
 
 const captchaKeyPref = "captcha:"
 
 // CaptchaService 图形验证码（简易数字图）。
 type CaptchaService struct {
-	rdb     *redis.Client
+	cache   storage.Cache
 	enabled bool
 }
 
 // NewCaptchaService 创建验证码服务。
-func NewCaptchaService(rdb *redis.Client, enabled bool) *CaptchaService {
-	return &CaptchaService{rdb: rdb, enabled: enabled}
+func NewCaptchaService(cache storage.Cache, enabled bool) *CaptchaService {
+	return &CaptchaService{cache: cache, enabled: enabled}
 }
 
 // Enabled 是否启用验证码。
@@ -52,8 +52,8 @@ func (s *CaptchaService) Generate(ctx context.Context) (id, b64s string, err err
 	}
 	// 前端会拼接 data:image/gif;base64, 前缀，此处只返回纯 base64
 	b64s = base64.StdEncoding.EncodeToString(img)
-	if s.rdb != nil {
-		if err := s.rdb.Set(ctx, captchaKeyPref+id, code, 2*time.Minute).Err(); err != nil {
+	if s.cache != nil {
+		if err := s.cache.Set(ctx, captchaKeyPref+id, code, 2*time.Minute); err != nil {
 			return "", "", err
 		}
 	}
@@ -65,15 +65,15 @@ func (s *CaptchaService) Verify(ctx context.Context, id, code string) bool {
 	if !s.enabled {
 		return true
 	}
-	if id == "" || code == "" || s.rdb == nil {
+	if id == "" || code == "" || s.cache == nil {
 		return false
 	}
 	key := captchaKeyPref + id
-	val, err := s.rdb.Get(ctx, key).Result()
+	val, err := s.cache.Get(ctx, key)
 	if err != nil {
 		return false
 	}
-	_ = s.rdb.Del(ctx, key).Err()
+	_ = s.cache.Del(ctx, key)
 	return strings.EqualFold(val, code)
 }
 

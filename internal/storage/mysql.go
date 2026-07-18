@@ -16,6 +16,10 @@ var ErrMySQLNotInitialized = errors.New("mysql 未初始化")
 
 // InitMySQL 初始化 MySQL 连接。
 func InitMySQL(mysqlConfig config.MySQL) error {
+	charset := mysqlConfig.Charset
+	if charset == "" {
+		charset = "utf8mb4"
+	}
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 		mysqlConfig.User,
@@ -23,15 +27,17 @@ func InitMySQL(mysqlConfig config.MySQL) error {
 		mysqlConfig.Host,
 		mysqlConfig.Port,
 		mysqlConfig.Database,
-		mysqlConfig.Charset,
+		charset,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	conn, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("connect mysql: %w", err)
 	}
 
-	mysqlDB = db
+	mysqlDB = conn
+	db = conn
+	dbDriver = "mysql"
 	return nil
 }
 
