@@ -1,7 +1,7 @@
 package monitor
 
 import (
-	"thirteen-admin/app/services"
+	"thirteen-admin/app/runtime"
 	"thirteen-admin/internal/base/handler"
 
 	"github.com/gin-gonic/gin"
@@ -9,20 +9,15 @@ import (
 
 // OnlineHandler 在线用户 HTTP 处理器。
 type OnlineHandler struct {
-	handler.Handler
-	svc *services.OnlineService
-}
-
-// NewOnlineHandler 创建在线用户 Handler。
-func NewOnlineHandler(svc *services.OnlineService) *OnlineHandler {
-	return &OnlineHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /monitor/online/list
-func (h *OnlineHandler) List(ctx *gin.Context) {
-	users, err := h.svc.List(ctx.Request.Context(), ctx.Query("ipaddr"), ctx.Query("userName"))
+func (e OnlineHandler) List(c *gin.Context) {
+	svc := runtime.Online()
+	users, err := svc.List(c.Request.Context(), c.Query("ipaddr"), c.Query("userName"))
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
 	rows := make([]map[string]any, 0, len(users))
@@ -38,19 +33,19 @@ func (h *OnlineHandler) List(ctx *gin.Context) {
 			"loginTime":     u.LoginTime,
 		})
 	}
-	h.Table(ctx, int64(len(rows)), rows)
+	e.Table(c, int64(len(rows)), rows)
 }
 
 // ForceLogout DELETE /monitor/online/:tokenId
-func (h *OnlineHandler) ForceLogout(ctx *gin.Context) {
-	tokenID := ctx.Param("tokenId")
+func (e OnlineHandler) ForceLogout(c *gin.Context) {
+	tokenID := c.Param("tokenId")
 	if tokenID == "" {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Remove(ctx.Request.Context(), tokenID); err != nil {
-		h.InternalError(ctx, err)
+	if err := runtime.Online().Remove(c.Request.Context(), tokenID); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "强退成功")
+	e.SuccessMsg(c, "强退成功")
 }

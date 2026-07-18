@@ -7,27 +7,31 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterUserRoutes 注册用户路由。
-func RegisterUserRoutes(h *hsystem.UserHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		sys := g.Group("/system/user", auth)
-		sys.GET("/list", h.List)
-		sys.GET("/profile", h.Profile)
-		sys.GET("/deptTree", h.DeptTree)
-		sys.GET("/authRole/:userId", h.AuthRole)
-		sys.GET("", h.Get)
-		sys.GET("/:userId", h.Get)
-		sys.POST("", h.Add)
-		sys.POST("/export", h.Export)
-		sys.POST("/importData", h.ImportData)
-		sys.POST("/importTemplate", h.ImportTemplate)
-		sys.POST("/profile/avatar", h.Avatar)
-		sys.PUT("", h.Edit)
-		sys.PUT("/resetPwd", h.ResetPwd)
-		sys.PUT("/changeStatus", h.ChangeStatus)
-		sys.PUT("/profile", h.UpdateProfile)
-		sys.PUT("/profile/updatePwd", h.UpdatePwd)
-		sys.PUT("/authRole", h.SaveAuthRole)
-		sys.DELETE("/:userId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerUserRouter)
+}
+
+func registerUserRouter(g *gin.RouterGroup) {
+	h := hsystem.UserHandler{}
+	r := g.Group("/system/user")
+	{
+		r.GET("/list", h.List)
+		r.GET("/profile", h.Profile)
+		r.GET("/deptTree", h.DeptTree)
+		r.GET("/authRole/:userId", h.AuthRole)
+		r.GET("", h.Get)
+		r.GET("/:userId", h.Get)
+		r.POST("", h.Add)
+		r.POST("/export", h.Export)
+		r.POST("/importData", h.ImportData)
+		r.POST("/importTemplate", h.ImportTemplate)
+		r.POST("/profile/avatar", h.Avatar)
+		r.PUT("", h.Edit)
+		r.PUT("/resetPwd", h.ResetPwd)
+		r.PUT("/changeStatus", h.ChangeStatus)
+		r.PUT("/profile", h.UpdateProfile)
+		r.PUT("/profile/updatePwd", h.UpdatePwd)
+		r.PUT("/authRole", h.SaveAuthRole)
+		r.DELETE("/:userId", h.Delete)
+	}
 }

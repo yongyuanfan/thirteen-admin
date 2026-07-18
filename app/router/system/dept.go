@@ -7,16 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterDeptRoutes 注册部门路由。
-func RegisterDeptRoutes(h *hsystem.DeptHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		sys := g.Group("/system/dept", auth)
-		sys.GET("/list", h.List)
-		sys.GET("/list/exclude/:deptId", h.ListExclude)
-		sys.GET("/:deptId", h.Get)
-		sys.POST("", h.Add)
-		sys.PUT("", h.Edit)
-		sys.PUT("/updateSort", h.UpdateSort)
-		sys.DELETE("/:deptId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerDeptRouter)
+}
+
+func registerDeptRouter(g *gin.RouterGroup) {
+	h := hsystem.DeptHandler{}
+	r := g.Group("/system/dept")
+	{
+		r.GET("/list", h.List)
+		r.GET("/list/exclude/:deptId", h.ListExclude)
+		r.GET("/:deptId", h.Get)
+		r.POST("", h.Add)
+		r.PUT("", h.Edit)
+		r.PUT("/updateSort", h.UpdateSort)
+		r.DELETE("/:deptId", h.Delete)
+	}
 }

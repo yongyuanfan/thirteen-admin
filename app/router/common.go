@@ -6,11 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterCommonRoutes 注册公共上传下载路由。
-func RegisterCommonRoutes(h *handlers.CommonHandler) {
-	RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		g.POST("/common/upload", auth, h.Upload)
-		g.GET("/common/download", auth, h.Download)
-		g.GET("/common/download/resource", auth, h.DownloadResource)
-	})
+func init() {
+	RegisterCheckRole(registerCommonRouter)
+}
+
+func registerCommonRouter(g *gin.RouterGroup) {
+	h := handlers.CommonHandler{}
+	g.POST("/common/upload", h.Upload)
+	g.GET("/common/download", h.Download)
+	g.GET("/common/download/resource", h.DownloadResource)
 }

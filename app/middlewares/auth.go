@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"thirteen-admin/app/runtime"
 	"thirteen-admin/app/services"
 	"thirteen-admin/internal/base/handler"
 
@@ -16,10 +17,17 @@ const (
 	ContextTokenKey    = "authToken"
 )
 
-// Auth JWT 鉴权中间件。
-func Auth(jwtManager *services.JWTManager) gin.HandlerFunc {
+// Auth JWT 鉴权中间件（JWT 从 runtime 读取）。
+func Auth() gin.HandlerFunc {
 	h := &handler.Handler{}
 	return func(ctx *gin.Context) {
+		jwtManager := runtime.JWT()
+		if jwtManager == nil {
+			h.Unauthorized(ctx, "认证失败，无法访问系统资源")
+			ctx.Abort()
+			return
+		}
+
 		header := ctx.GetHeader("Authorization")
 		if header == "" {
 			h.Unauthorized(ctx, "认证失败，无法访问系统资源")

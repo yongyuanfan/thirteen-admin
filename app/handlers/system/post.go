@@ -14,38 +14,42 @@ import (
 
 // PostHandler 岗位 HTTP 处理器。
 type PostHandler struct {
-	handler.Handler
-	svc *services.PostService
-}
-
-// NewPostHandler 创建岗位 Handler。
-func NewPostHandler(svc *services.PostService) *PostHandler {
-	return &PostHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /system/post/list
-func (h *PostHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e PostHandler) List(c *gin.Context) {
+	s := services.PostService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Get GET /system/post/:postId
-func (h *PostHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("postId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "岗位不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e PostHandler) Get(c *gin.Context) {
+	s := services.PostService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("postId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "岗位不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type postBody struct {
@@ -58,10 +62,15 @@ type postBody struct {
 }
 
 // Add POST /system/post
-func (h *PostHandler) Add(ctx *gin.Context) {
+func (e PostHandler) Add(c *gin.Context) {
+	s := services.PostService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req postBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	post := &models.Post{
@@ -74,18 +83,23 @@ func (h *PostHandler) Add(ctx *gin.Context) {
 	if post.Status == "" {
 		post.Status = "0"
 	}
-	if err := h.svc.Add(post, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Add(post, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // Edit PUT /system/post
-func (h *PostHandler) Edit(ctx *gin.Context) {
+func (e PostHandler) Edit(c *gin.Context) {
+	s := services.PostService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req postBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	post := &models.Post{
@@ -96,33 +110,43 @@ func (h *PostHandler) Edit(ctx *gin.Context) {
 		Remark:   req.Remark,
 	}
 	post.ID = req.PostID
-	if err := h.svc.Edit(post, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Edit(post, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // Delete DELETE /system/post/:postId
-func (h *PostHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("postId"))
+func (e PostHandler) Delete(c *gin.Context) {
+	s := services.PostService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("postId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // Export POST /system/post/export
-func (h *PostHandler) Export(ctx *gin.Context) {
-	rows, err := h.svc.Export(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e PostHandler) Export(c *gin.Context) {
+	s := services.PostService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "post.csv", []string{"岗位编号", "岗位编码", "岗位名称", "岗位排序", "状态", "创建时间"}, rows)
+	rows, err := s.Export(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "post.csv", []string{"岗位编号", "岗位编码", "岗位名称", "岗位排序", "状态", "创建时间"}, rows)
 }

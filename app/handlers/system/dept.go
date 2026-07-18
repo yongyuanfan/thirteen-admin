@@ -14,49 +14,58 @@ import (
 
 // DeptHandler 部门 HTTP 处理器。
 type DeptHandler struct {
-	handler.Handler
-	svc *services.DeptService
-}
-
-// NewDeptHandler 创建部门 Handler。
-func NewDeptHandler(svc *services.DeptService) *DeptHandler {
-	return &DeptHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /system/dept/list
-func (h *DeptHandler) List(ctx *gin.Context) {
-	rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DeptHandler) List(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, rows)
+	rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, rows)
 }
 
 // ListExclude GET /system/dept/list/exclude/:deptId
-func (h *DeptHandler) ListExclude(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("deptId"), 10, 64)
-	rows, err := h.svc.ListExclude(uint(id))
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DeptHandler) ListExclude(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, rows)
+	id, _ := strconv.ParseUint(c.Param("deptId"), 10, 64)
+	rows, err := s.ListExclude(uint(id))
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, rows)
 }
 
 // Get GET /system/dept/:deptId
-func (h *DeptHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("deptId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "部门不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e DeptHandler) Get(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("deptId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "部门不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type deptBody struct {
@@ -71,10 +80,15 @@ type deptBody struct {
 }
 
 // Add POST /system/dept
-func (h *DeptHandler) Add(ctx *gin.Context) {
+func (e DeptHandler) Add(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req deptBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	dept := &models.Dept{
@@ -89,18 +103,23 @@ func (h *DeptHandler) Add(ctx *gin.Context) {
 	if dept.Status == "" {
 		dept.Status = "0"
 	}
-	if err := h.svc.Add(dept, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Add(dept, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // Edit PUT /system/dept
-func (h *DeptHandler) Edit(ctx *gin.Context) {
+func (e DeptHandler) Edit(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req deptBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	dept := &models.Dept{
@@ -113,11 +132,11 @@ func (h *DeptHandler) Edit(ctx *gin.Context) {
 		Status:   req.Status,
 	}
 	dept.ID = req.DeptID
-	if err := h.svc.Edit(dept, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Edit(dept, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 type sortBody struct {
@@ -126,25 +145,35 @@ type sortBody struct {
 }
 
 // UpdateSort PUT /system/dept/updateSort
-func (h *DeptHandler) UpdateSort(ctx *gin.Context) {
+func (e DeptHandler) UpdateSort(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req sortBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.UpdateSort(req.DeptIDs, req.OrderNums); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.UpdateSort(req.DeptIDs, req.OrderNums); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // Delete DELETE /system/dept/:deptId
-func (h *DeptHandler) Delete(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("deptId"), 10, 64)
-	if err := h.svc.Delete(uint(id)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+func (e DeptHandler) Delete(c *gin.Context) {
+	s := services.DeptService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	id, _ := strconv.ParseUint(c.Param("deptId"), 10, 64)
+	if err := s.Delete(uint(id)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
+		return
+	}
+	e.SuccessMsg(c, "删除成功")
 }

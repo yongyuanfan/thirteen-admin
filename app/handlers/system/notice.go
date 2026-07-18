@@ -14,38 +14,42 @@ import (
 
 // NoticeHandler 公告 HTTP 处理器。
 type NoticeHandler struct {
-	handler.Handler
-	svc *services.NoticeService
-}
-
-// NewNoticeHandler 创建公告 Handler。
-func NewNoticeHandler(svc *services.NoticeService) *NoticeHandler {
-	return &NoticeHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /system/notice/list
-func (h *NoticeHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e NoticeHandler) List(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Get GET /system/notice/:noticeId
-func (h *NoticeHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("noticeId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "公告不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e NoticeHandler) Get(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("noticeId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "公告不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type noticeBody struct {
@@ -58,10 +62,15 @@ type noticeBody struct {
 }
 
 // Add POST /system/notice
-func (h *NoticeHandler) Add(ctx *gin.Context) {
+func (e NoticeHandler) Add(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req noticeBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	notice := &models.Notice{
@@ -74,18 +83,23 @@ func (h *NoticeHandler) Add(ctx *gin.Context) {
 	if notice.Status == "" {
 		notice.Status = "0"
 	}
-	if err := h.svc.Add(notice, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Add(notice, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // Edit PUT /system/notice
-func (h *NoticeHandler) Edit(ctx *gin.Context) {
+func (e NoticeHandler) Edit(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req noticeBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	notice := &models.Notice{
@@ -96,74 +110,99 @@ func (h *NoticeHandler) Edit(ctx *gin.Context) {
 		Remark:        req.Remark,
 	}
 	notice.ID = req.NoticeID
-	if err := h.svc.Edit(notice, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Edit(notice, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // Delete DELETE /system/notice/:noticeId
-func (h *NoticeHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("noticeId"))
+func (e NoticeHandler) Delete(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("noticeId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // ListTop GET /system/notice/listTop
-func (h *NoticeHandler) ListTop(ctx *gin.Context) {
-	rows, unread, err := h.svc.ListTop(services.ContextUserID(ctx))
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e NoticeHandler) ListTop(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.OK(ctx, gin.H{
+	rows, unread, err := s.ListTop(services.ContextUserID(c))
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.OK(c, gin.H{
 		"data":        rows,
 		"unreadCount": unread,
 	})
 }
 
 // MarkRead POST /system/notice/markRead
-func (h *NoticeHandler) MarkRead(ctx *gin.Context) {
-	noticeID, _ := strconv.ParseUint(ctx.Query("noticeId"), 10, 64)
+func (e NoticeHandler) MarkRead(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	noticeID, _ := strconv.ParseUint(c.Query("noticeId"), 10, 64)
 	if noticeID == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.MarkRead(services.ContextUserID(ctx), uint(noticeID)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.MarkRead(services.ContextUserID(c), uint(noticeID)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "操作成功")
+	e.SuccessMsg(c, "操作成功")
 }
 
 // MarkReadAll POST /system/notice/markReadAll
-func (h *NoticeHandler) MarkReadAll(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Query("ids"))
+func (e NoticeHandler) MarkReadAll(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Query("ids"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.MarkReadAll(services.ContextUserID(ctx), ids); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.MarkReadAll(services.ContextUserID(c), ids); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "操作成功")
+	e.SuccessMsg(c, "操作成功")
 }
 
 // ReadUsersList GET /system/notice/readUsers/list
-func (h *NoticeHandler) ReadUsersList(ctx *gin.Context) {
-	total, rows, err := h.svc.ReadUsersList(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e NoticeHandler) ReadUsersList(c *gin.Context) {
+	s := services.NoticeService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.ReadUsersList(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }

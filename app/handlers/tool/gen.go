@@ -17,48 +17,57 @@ import (
 
 // GenHandler 代码生成 HTTP 处理器。
 type GenHandler struct {
-	handler.Handler
-	svc *services.GenService
-}
-
-// NewGenHandler 创建代码生成 Handler。
-func NewGenHandler(svc *services.GenService) *GenHandler {
-	return &GenHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /tool/gen/list
-func (h *GenHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e GenHandler) List(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // DbList GET /tool/gen/db/list
-func (h *GenHandler) DbList(ctx *gin.Context) {
-	total, rows, err := h.svc.DbList(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e GenHandler) DbList(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.DbList(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Get GET /tool/gen/:tableId
-func (h *GenHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("tableId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "生成表不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e GenHandler) Get(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("tableId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "生成表不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type genUpdateBody struct {
@@ -105,10 +114,15 @@ type genColumnBody struct {
 }
 
 // Update PUT /tool/gen
-func (h *GenHandler) Update(ctx *gin.Context) {
+func (e GenHandler) Update(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req genUpdateBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	table := &models.GenTable{
@@ -132,118 +146,153 @@ func (h *GenHandler) Update(ctx *gin.Context) {
 	}
 	table.ID = req.TableID
 	columns := make([]models.GenTableColumn, 0, len(req.Columns))
-	for _, c := range req.Columns {
-		tid := c.TableID
+	for _, colReq := range req.Columns {
+		tid := colReq.TableID
 		if tid == 0 {
 			tid = req.TableID
 		}
 		col := models.GenTableColumn{
-			ColumnName:    c.ColumnName,
-			ColumnComment: c.ColumnComment,
-			ColumnType:    c.ColumnType,
-			JavaType:      c.JavaType,
-			JavaField:     c.JavaField,
-			IsPk:          c.IsPk,
-			IsIncrement:   c.IsIncrement,
-			IsRequired:    c.IsRequired,
-			IsInsert:      c.IsInsert,
-			IsEdit:        c.IsEdit,
-			IsList:        c.IsList,
-			IsQuery:       c.IsQuery,
-			QueryType:     c.QueryType,
-			HTMLType:      c.HTMLType,
-			DictType:      c.DictType,
-			Sort:          c.Sort,
+			ColumnName:    colReq.ColumnName,
+			ColumnComment: colReq.ColumnComment,
+			ColumnType:    colReq.ColumnType,
+			JavaType:      colReq.JavaType,
+			JavaField:     colReq.JavaField,
+			IsPk:          colReq.IsPk,
+			IsIncrement:   colReq.IsIncrement,
+			IsRequired:    colReq.IsRequired,
+			IsInsert:      colReq.IsInsert,
+			IsEdit:        colReq.IsEdit,
+			IsList:        colReq.IsList,
+			IsQuery:       colReq.IsQuery,
+			QueryType:     colReq.QueryType,
+			HTMLType:      colReq.HTMLType,
+			DictType:      colReq.DictType,
+			Sort:          colReq.Sort,
 		}
-		col.ID = c.ColumnID
+		col.ID = colReq.ColumnID
 		col.TableID = &tid
 		columns = append(columns, col)
 	}
-	if err := h.svc.Update(table, columns, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Update(table, columns, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "保存成功")
+	e.SuccessMsg(c, "保存成功")
 }
 
 // ImportTable POST /tool/gen/importTable
-func (h *GenHandler) ImportTable(ctx *gin.Context) {
-	tables := ctx.Query("tables")
-	tplWebType := ctx.DefaultQuery("tplWebType", "element-plus")
-	names := splitComma(tables)
-	if err := h.svc.ImportTable(names, tplWebType, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+func (e GenHandler) ImportTable(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "导入成功")
+	tables := c.Query("tables")
+	tplWebType := c.DefaultQuery("tplWebType", "element-plus")
+	names := splitComma(tables)
+	if err := s.ImportTable(names, tplWebType, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
+		return
+	}
+	e.SuccessMsg(c, "导入成功")
 }
 
 // CreateTable POST /tool/gen/createTable
-func (h *GenHandler) CreateTable(ctx *gin.Context) {
-	sql := ctx.Query("sql")
-	tplWebType := ctx.DefaultQuery("tplWebType", "element-plus")
-	if err := h.svc.CreateTable(sql, tplWebType, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+func (e GenHandler) CreateTable(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "创建成功")
+	sql := c.Query("sql")
+	tplWebType := c.DefaultQuery("tplWebType", "element-plus")
+	if err := s.CreateTable(sql, tplWebType, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
+		return
+	}
+	e.SuccessMsg(c, "创建成功")
 }
 
 // Preview GET /tool/gen/preview/:tableId
-func (h *GenHandler) Preview(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("tableId"), 10, 64)
-	data, err := h.svc.Preview(uint(id))
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e GenHandler) Preview(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("tableId"), 10, 64)
+	data, err := s.Preview(uint(id))
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 // Delete DELETE /tool/gen/:tableId
-func (h *GenHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("tableId"))
+func (e GenHandler) Delete(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("tableId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // GenCode GET /tool/gen/genCode/:tableName
-func (h *GenHandler) GenCode(ctx *gin.Context) {
-	if err := h.svc.GenCode(ctx.Param("tableName")); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+func (e GenHandler) GenCode(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "生成成功")
+	if err := s.GenCode(c.Param("tableName")); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
+		return
+	}
+	e.SuccessMsg(c, "生成成功")
 }
 
 // SynchDb GET /tool/gen/synchDb/:tableName
-func (h *GenHandler) SynchDb(ctx *gin.Context) {
-	if err := h.svc.SynchDb(ctx.Param("tableName"), services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+func (e GenHandler) SynchDb(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "同步成功")
+	if err := s.SynchDb(c.Param("tableName"), services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.SuccessMsg(c, "同步成功")
 }
 
 // BatchGenCode GET /tool/gen/batchGenCode
-func (h *GenHandler) BatchGenCode(ctx *gin.Context) {
-	names := splitComma(ctx.Query("tables"))
-	data, filename, err := h.svc.BatchGenCode(names)
-	if err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+func (e GenHandler) BatchGenCode(c *gin.Context) {
+	s := services.GenService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	ctx.Header("Content-Type", "application/octet-stream")
-	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", url.QueryEscape(filename)))
-	ctx.Header("download-filename", url.QueryEscape(filename))
-	ctx.Data(200, "application/octet-stream", data)
+	names := splitComma(c.Query("tables"))
+	data, filename, err := s.BatchGenCode(names)
+	if err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
+		return
+	}
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", url.QueryEscape(filename)))
+	c.Header("download-filename", url.QueryEscape(filename))
+	c.Data(200, "application/octet-stream", data)
 }
 
 func splitComma(s string) []string {

@@ -7,10 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterDictRoutes 注册字典路由。
-func RegisterDictRoutes(h *hsystem.DictHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		typ := g.Group("/system/dict/type", auth)
+func init() {
+	router.RegisterCheckRole(registerDictRouter)
+}
+
+func registerDictRouter(g *gin.RouterGroup) {
+	h := hsystem.DictHandler{}
+	typ := g.Group("/system/dict/type")
+	{
 		typ.GET("/list", h.TypeList)
 		typ.GET("/optionselect", h.TypeOptionSelect)
 		typ.DELETE("/refreshCache", h.TypeRefreshCache)
@@ -19,8 +23,10 @@ func RegisterDictRoutes(h *hsystem.DictHandler) {
 		typ.POST("/export", h.TypeExport)
 		typ.PUT("", h.TypeEdit)
 		typ.DELETE("/:dictId", h.TypeDelete)
+	}
 
-		data := g.Group("/system/dict/data", auth)
+	data := g.Group("/system/dict/data")
+	{
 		data.GET("/list", h.DataList)
 		data.GET("/type/:dictType", h.DataByType)
 		data.GET("/:dictCode", h.DataGet)
@@ -28,5 +34,5 @@ func RegisterDictRoutes(h *hsystem.DictHandler) {
 		data.POST("/export", h.DataExport)
 		data.PUT("", h.DataEdit)
 		data.DELETE("/:dictCode", h.DataDelete)
-	})
+	}
 }

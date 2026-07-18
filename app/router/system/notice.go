@@ -7,18 +7,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterNoticeRoutes 注册公告路由。
-func RegisterNoticeRoutes(h *hsystem.NoticeHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		sys := g.Group("/system/notice", auth)
-		sys.GET("/list", h.List)
-		sys.GET("/listTop", h.ListTop)
-		sys.GET("/readUsers/list", h.ReadUsersList)
-		sys.GET("/:noticeId", h.Get)
-		sys.POST("", h.Add)
-		sys.POST("/markRead", h.MarkRead)
-		sys.POST("/markReadAll", h.MarkReadAll)
-		sys.PUT("", h.Edit)
-		sys.DELETE("/:noticeId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerNoticeRouter)
+}
+
+func registerNoticeRouter(g *gin.RouterGroup) {
+	h := hsystem.NoticeHandler{}
+	r := g.Group("/system/notice")
+	{
+		r.GET("/list", h.List)
+		r.GET("/listTop", h.ListTop)
+		r.GET("/readUsers/list", h.ReadUsersList)
+		r.GET("/:noticeId", h.Get)
+		r.POST("", h.Add)
+		r.POST("/markRead", h.MarkRead)
+		r.POST("/markReadAll", h.MarkReadAll)
+		r.PUT("", h.Edit)
+		r.DELETE("/:noticeId", h.Delete)
+	}
 }

@@ -14,59 +14,73 @@ import (
 
 // MenuHandler 菜单 HTTP 处理器。
 type MenuHandler struct {
-	handler.Handler
-	svc *services.MenuService
-}
-
-// NewMenuHandler 创建菜单 Handler。
-func NewMenuHandler(svc *services.MenuService) *MenuHandler {
-	return &MenuHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /system/menu/list
-func (h *MenuHandler) List(ctx *gin.Context) {
-	rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e MenuHandler) List(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, rows)
+	rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, rows)
 }
 
 // Get GET /system/menu/:menuId
-func (h *MenuHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("menuId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "菜单不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e MenuHandler) Get(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("menuId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "菜单不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 // TreeSelect GET /system/menu/treeselect
-func (h *MenuHandler) TreeSelect(ctx *gin.Context) {
-	data, err := h.svc.TreeSelect()
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e MenuHandler) TreeSelect(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	data, err := s.TreeSelect()
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 // RoleMenuTreeSelect GET /system/menu/roleMenuTreeselect/:roleId
-func (h *MenuHandler) RoleMenuTreeSelect(ctx *gin.Context) {
-	roleID, _ := strconv.ParseUint(ctx.Param("roleId"), 10, 64)
-	menus, checked, err := h.svc.RoleMenuTreeSelect(uint(roleID))
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e MenuHandler) RoleMenuTreeSelect(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.OK(ctx, gin.H{
+	roleID, _ := strconv.ParseUint(c.Param("roleId"), 10, 64)
+	menus, checked, err := s.RoleMenuTreeSelect(uint(roleID))
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.OK(c, gin.H{
 		"menus":       menus,
 		"checkedKeys": checked,
 	})
@@ -91,7 +105,7 @@ type menuBody struct {
 	Remark    string `json:"remark"`
 }
 
-func (h *MenuHandler) bindMenu(req menuBody) *models.Menu {
+func (e MenuHandler) bindMenu(req menuBody) *models.Menu {
 	menu := &models.Menu{
 		MenuName:  req.MenuName,
 		ParentID:  req.ParentID,
@@ -120,31 +134,41 @@ func (h *MenuHandler) bindMenu(req menuBody) *models.Menu {
 }
 
 // Add POST /system/menu
-func (h *MenuHandler) Add(ctx *gin.Context) {
+func (e MenuHandler) Add(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req menuBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Add(h.bindMenu(req), services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Add(e.bindMenu(req), services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // Edit PUT /system/menu
-func (h *MenuHandler) Edit(ctx *gin.Context) {
+func (e MenuHandler) Edit(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req menuBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Edit(h.bindMenu(req), services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Edit(e.bindMenu(req), services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 type menuSortBody struct {
@@ -153,25 +177,35 @@ type menuSortBody struct {
 }
 
 // UpdateSort PUT /system/menu/updateSort
-func (h *MenuHandler) UpdateSort(ctx *gin.Context) {
+func (e MenuHandler) UpdateSort(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req menuSortBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.UpdateSort(req.MenuIDs, req.OrderNums); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.UpdateSort(req.MenuIDs, req.OrderNums); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // Delete DELETE /system/menu/:menuId
-func (h *MenuHandler) Delete(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("menuId"), 10, 64)
-	if err := h.svc.Delete(uint(id)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+func (e MenuHandler) Delete(c *gin.Context) {
+	s := services.MenuService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	id, _ := strconv.ParseUint(c.Param("menuId"), 10, 64)
+	if err := s.Delete(uint(id)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
+		return
+	}
+	e.SuccessMsg(c, "删除成功")
 }

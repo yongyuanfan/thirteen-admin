@@ -11,3 +11,8 @@ type Service struct {
 func New(db *gorm.DB) Service {
 	return Service{DB: db}
 }
+
+// SetDB 设置 DB（请求级装配用）。
+func (s *Service) SetDB(db *gorm.DB) {
+	s.DB = db
+}

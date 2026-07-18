@@ -14,38 +14,42 @@ import (
 
 // JobHandler 定时任务 HTTP 处理器。
 type JobHandler struct {
-	handler.Handler
-	svc *services.JobService
-}
-
-// NewJobHandler 创建定时任务 Handler。
-func NewJobHandler(svc *services.JobService) *JobHandler {
-	return &JobHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /monitor/job/list
-func (h *JobHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e JobHandler) List(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Get GET /monitor/job/:jobId
-func (h *JobHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("jobId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "任务不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e JobHandler) Get(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("jobId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "任务不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type jobBody struct {
@@ -61,10 +65,15 @@ type jobBody struct {
 }
 
 // Add POST /monitor/job
-func (h *JobHandler) Add(ctx *gin.Context) {
+func (e JobHandler) Add(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req jobBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	job := &models.Job{
@@ -77,18 +86,23 @@ func (h *JobHandler) Add(ctx *gin.Context) {
 		Status:         req.Status,
 		Remark:         req.Remark,
 	}
-	if err := h.svc.Add(job, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Add(job, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // Edit PUT /monitor/job
-func (h *JobHandler) Edit(ctx *gin.Context) {
+func (e JobHandler) Edit(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req jobBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	job := &models.Job{
@@ -102,25 +116,30 @@ func (h *JobHandler) Edit(ctx *gin.Context) {
 		Remark:         req.Remark,
 	}
 	job.ID = req.JobID
-	if err := h.svc.Edit(job, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Edit(job, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // Delete DELETE /monitor/job/:jobId
-func (h *JobHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("jobId"))
+func (e JobHandler) Delete(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("jobId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 type jobStatusBody struct {
@@ -129,17 +148,22 @@ type jobStatusBody struct {
 }
 
 // ChangeStatus PUT /monitor/job/changeStatus
-func (h *JobHandler) ChangeStatus(ctx *gin.Context) {
+func (e JobHandler) ChangeStatus(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req jobStatusBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.ChangeStatus(req.JobID, req.Status); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.ChangeStatus(req.JobID, req.Status); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 type jobRunBody struct {
@@ -148,79 +172,103 @@ type jobRunBody struct {
 }
 
 // Run PUT /monitor/job/run
-func (h *JobHandler) Run(ctx *gin.Context) {
+func (e JobHandler) Run(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req jobRunBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Run(req.JobID); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Run(req.JobID); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "执行成功")
+	e.SuccessMsg(c, "执行成功")
 }
 
 // Export POST /monitor/job/export
-func (h *JobHandler) Export(ctx *gin.Context) {
-	rows, err := h.svc.Export(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e JobHandler) Export(c *gin.Context) {
+	s := services.JobService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "job.csv", []string{"任务编号", "任务名称", "任务组名", "调用目标", "cron表达式", "状态"}, rows)
+	rows, err := s.Export(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "job.csv", []string{"任务编号", "任务名称", "任务组名", "调用目标", "cron表达式", "状态"}, rows)
 }
 
 // JobLogHandler 任务日志 HTTP 处理器。
 type JobLogHandler struct {
-	handler.Handler
-	svc *services.JobLogService
-}
-
-// NewJobLogHandler 创建任务日志 Handler。
-func NewJobLogHandler(svc *services.JobLogService) *JobLogHandler {
-	return &JobLogHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /monitor/jobLog/list
-func (h *JobLogHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e JobLogHandler) List(c *gin.Context) {
+	s := services.JobLogService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Delete DELETE /monitor/jobLog/:jobLogId
-func (h *JobLogHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("jobLogId"))
+func (e JobLogHandler) Delete(c *gin.Context) {
+	s := services.JobLogService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("jobLogId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // Clean DELETE /monitor/jobLog/clean
-func (h *JobLogHandler) Clean(ctx *gin.Context) {
-	if err := h.svc.Clean(); err != nil {
-		h.InternalError(ctx, err)
+func (e JobLogHandler) Clean(c *gin.Context) {
+	s := services.JobLogService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "清空成功")
+	if err := s.Clean(); err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.SuccessMsg(c, "清空成功")
 }
 
 // Export POST /monitor/jobLog/export
-func (h *JobLogHandler) Export(ctx *gin.Context) {
-	rows, err := h.svc.Export(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e JobLogHandler) Export(c *gin.Context) {
+	s := services.JobLogService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "jobLog.csv", []string{"日志编号", "任务名称", "任务组名", "执行状态", "日志信息", "执行时间"}, rows)
+	rows, err := s.Export(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "jobLog.csv", []string{"日志编号", "任务名称", "任务组名", "执行状态", "日志信息", "执行时间"}, rows)
 }

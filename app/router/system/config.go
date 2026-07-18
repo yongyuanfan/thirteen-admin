@@ -7,17 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterConfigRoutes 注册参数路由。
-func RegisterConfigRoutes(h *hsystem.ConfigHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		sys := g.Group("/system/config", auth)
-		sys.GET("/list", h.List)
-		sys.GET("/configKey/:configKey", h.GetByKey)
-		sys.DELETE("/refreshCache", h.RefreshCache)
-		sys.GET("/:configId", h.Get)
-		sys.POST("", h.Add)
-		sys.POST("/export", h.Export)
-		sys.PUT("", h.Edit)
-		sys.DELETE("/:configId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerConfigRouter)
+}
+
+func registerConfigRouter(g *gin.RouterGroup) {
+	h := hsystem.ConfigHandler{}
+	r := g.Group("/system/config")
+	{
+		r.GET("/list", h.List)
+		r.GET("/configKey/:configKey", h.GetByKey)
+		r.DELETE("/refreshCache", h.RefreshCache)
+		r.GET("/:configId", h.Get)
+		r.POST("", h.Add)
+		r.POST("/export", h.Export)
+		r.PUT("", h.Edit)
+		r.DELETE("/:configId", h.Delete)
+	}
 }

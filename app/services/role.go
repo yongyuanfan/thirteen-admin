@@ -25,6 +25,12 @@ func NewRoleService(db *gorm.DB, dept *DeptService) *RoleService {
 	}
 }
 
+// WithDeps 使用当前 DB 装配协作服务（请求级）。
+func (s *RoleService) WithDeps() *RoleService {
+	s.dept = &DeptService{Service: s.Service}
+	return s
+}
+
 // List 分页查询角色。
 func (s *RoleService) List(ctx *gin.Context) (int64, []map[string]any, error) {
 	page := ParsePage(ctx)

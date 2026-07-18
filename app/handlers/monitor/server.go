@@ -9,16 +9,11 @@ import (
 
 // ServerHandler 服务监控 HTTP 处理器。
 type ServerHandler struct {
-	handler.Handler
-	svc *services.ServerService
-}
-
-// NewServerHandler 创建服务监控 Handler。
-func NewServerHandler(svc *services.ServerService) *ServerHandler {
-	return &ServerHandler{svc: svc}
+	handler.Api
 }
 
 // GetInfo GET /monitor/server
-func (h *ServerHandler) GetInfo(ctx *gin.Context) {
-	h.Success(ctx, h.svc.Info())
+func (e ServerHandler) GetInfo(c *gin.Context) {
+	s := services.ServerService{}
+	e.Success(c, s.Info())
 }

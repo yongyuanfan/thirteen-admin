@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"thirteen-admin/app/runtime"
 	"thirteen-admin/app/services"
 	"thirteen-admin/internal/base/handler"
 
@@ -9,64 +10,90 @@ import (
 
 // LogininforHandler 登录日志 HTTP 处理器。
 type LogininforHandler struct {
-	handler.Handler
-	svc *services.LogininforService
+	handler.Api
 }
 
-// NewLogininforHandler 创建登录日志 Handler。
-func NewLogininforHandler(svc *services.LogininforService) *LogininforHandler {
-	return &LogininforHandler{svc: svc}
+func (e *LogininforHandler) svc(c *gin.Context) (*services.LogininforService, error) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		return nil, err
+	}
+	return services.NewLogininforService(e.Orm, runtime.Redis()), nil
 }
 
 // List GET /monitor/logininfor/list
-func (h *LogininforHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
+func (e LogininforHandler) List(c *gin.Context) {
+	s, err := e.svc(c)
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Delete DELETE /monitor/logininfor/:infoId
-func (h *LogininforHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("infoId"))
+func (e LogininforHandler) Delete(c *gin.Context) {
+	s, err := e.svc(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("infoId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // Unlock GET /monitor/logininfor/unlock/:userName
-func (h *LogininforHandler) Unlock(ctx *gin.Context) {
-	userName := ctx.Param("userName")
-	if err := h.svc.Unlock(ctx.Request.Context(), userName); err != nil {
-		h.InternalError(ctx, err)
+func (e LogininforHandler) Unlock(c *gin.Context) {
+	s, err := e.svc(c)
+	if err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "解锁成功")
+	userName := c.Param("userName")
+	if err := s.Unlock(c.Request.Context(), userName); err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.SuccessMsg(c, "解锁成功")
 }
 
 // Clean DELETE /monitor/logininfor/clean
-func (h *LogininforHandler) Clean(ctx *gin.Context) {
-	if err := h.svc.Clean(); err != nil {
-		h.InternalError(ctx, err)
+func (e LogininforHandler) Clean(c *gin.Context) {
+	s, err := e.svc(c)
+	if err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "清空成功")
+	if err := s.Clean(); err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.SuccessMsg(c, "清空成功")
 }
 
 // Export POST /monitor/logininfor/export
-func (h *LogininforHandler) Export(ctx *gin.Context) {
-	rows, err := h.svc.Export(ctx)
+func (e LogininforHandler) Export(c *gin.Context) {
+	s, err := e.svc(c)
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "logininfor.csv", []string{"访问编号", "用户名称", "登录地址", "登录状态", "描述", "访问时间"}, rows)
+	rows, err := s.Export(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "logininfor.csv", []string{"访问编号", "用户名称", "登录地址", "登录状态", "描述", "访问时间"}, rows)
 }

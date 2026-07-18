@@ -14,38 +14,42 @@ import (
 
 // DictHandler 字典 HTTP 处理器。
 type DictHandler struct {
-	handler.Handler
-	svc *services.DictService
-}
-
-// NewDictHandler 创建字典 Handler。
-func NewDictHandler(svc *services.DictService) *DictHandler {
-	return &DictHandler{svc: svc}
+	handler.Api
 }
 
 // TypeList GET /system/dict/type/list
-func (h *DictHandler) TypeList(ctx *gin.Context) {
-	total, rows, err := h.svc.TypeList(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DictHandler) TypeList(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.TypeList(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // TypeGet GET /system/dict/type/:dictId
-func (h *DictHandler) TypeGet(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("dictId"), 10, 64)
-	data, err := h.svc.TypeGet(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "字典类型不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e DictHandler) TypeGet(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("dictId"), 10, 64)
+	data, err := s.TypeGet(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "字典类型不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type dictTypeBody struct {
@@ -57,10 +61,15 @@ type dictTypeBody struct {
 }
 
 // TypeAdd POST /system/dict/type
-func (h *DictHandler) TypeAdd(ctx *gin.Context) {
+func (e DictHandler) TypeAdd(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req dictTypeBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	item := &models.DictType{
@@ -72,18 +81,23 @@ func (h *DictHandler) TypeAdd(ctx *gin.Context) {
 	if item.Status == "" {
 		item.Status = "0"
 	}
-	if err := h.svc.TypeAdd(item, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.TypeAdd(item, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // TypeEdit PUT /system/dict/type
-func (h *DictHandler) TypeEdit(ctx *gin.Context) {
+func (e DictHandler) TypeEdit(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req dictTypeBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	item := &models.DictType{
@@ -93,85 +107,115 @@ func (h *DictHandler) TypeEdit(ctx *gin.Context) {
 		Remark:   req.Remark,
 	}
 	item.ID = req.DictID
-	if err := h.svc.TypeEdit(item, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.TypeEdit(item, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // TypeDelete DELETE /system/dict/type/:dictId
-func (h *DictHandler) TypeDelete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("dictId"))
+func (e DictHandler) TypeDelete(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("dictId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.TypeDelete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.TypeDelete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // TypeRefreshCache DELETE /system/dict/type/refreshCache
-func (h *DictHandler) TypeRefreshCache(ctx *gin.Context) {
-	h.SuccessMsg(ctx, "刷新缓存成功")
+func (e DictHandler) TypeRefreshCache(c *gin.Context) {
+	e.SuccessMsg(c, "刷新缓存成功")
 }
 
 // TypeOptionSelect GET /system/dict/type/optionselect
-func (h *DictHandler) TypeOptionSelect(ctx *gin.Context) {
-	data, err := h.svc.TypeOptionSelect()
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DictHandler) TypeOptionSelect(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	data, err := s.TypeOptionSelect()
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 // TypeExport POST /system/dict/type/export
-func (h *DictHandler) TypeExport(ctx *gin.Context) {
-	rows, err := h.svc.TypeExport(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DictHandler) TypeExport(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "dict_type.csv", []string{"字典编号", "字典名称", "字典类型", "状态", "创建时间"}, rows)
+	rows, err := s.TypeExport(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "dict_type.csv", []string{"字典编号", "字典名称", "字典类型", "状态", "创建时间"}, rows)
 }
 
 // DataList GET /system/dict/data/list
-func (h *DictHandler) DataList(ctx *gin.Context) {
-	total, rows, err := h.svc.DataList(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DictHandler) DataList(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.DataList(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // DataGet GET /system/dict/data/:dictCode
-func (h *DictHandler) DataGet(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("dictCode"), 10, 64)
-	data, err := h.svc.DataGet(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "字典数据不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e DictHandler) DataGet(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("dictCode"), 10, 64)
+	data, err := s.DataGet(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "字典数据不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 // DataByType GET /system/dict/data/type/:dictType
-func (h *DictHandler) DataByType(ctx *gin.Context) {
-	data, err := h.svc.DataByType(ctx.Param("dictType"))
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DictHandler) DataByType(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	data, err := s.DataByType(c.Param("dictType"))
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 type dictDataBody struct {
@@ -188,10 +232,15 @@ type dictDataBody struct {
 }
 
 // DataAdd POST /system/dict/data
-func (h *DictHandler) DataAdd(ctx *gin.Context) {
+func (e DictHandler) DataAdd(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req dictDataBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	item := &models.DictData{
@@ -211,18 +260,23 @@ func (h *DictHandler) DataAdd(ctx *gin.Context) {
 	if item.Status == "" {
 		item.Status = "0"
 	}
-	if err := h.svc.DataAdd(item, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.DataAdd(item, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // DataEdit PUT /system/dict/data
-func (h *DictHandler) DataEdit(ctx *gin.Context) {
+func (e DictHandler) DataEdit(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req dictDataBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	item := &models.DictData{
@@ -237,33 +291,43 @@ func (h *DictHandler) DataEdit(ctx *gin.Context) {
 		Remark:    req.Remark,
 	}
 	item.ID = req.DictCode
-	if err := h.svc.DataEdit(item, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.DataEdit(item, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // DataDelete DELETE /system/dict/data/:dictCode
-func (h *DictHandler) DataDelete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("dictCode"))
+func (e DictHandler) DataDelete(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("dictCode"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.DataDelete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.DataDelete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // DataExport POST /system/dict/data/export
-func (h *DictHandler) DataExport(ctx *gin.Context) {
-	rows, err := h.svc.DataExport(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e DictHandler) DataExport(c *gin.Context) {
+	s := services.DictService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "dict_data.csv", []string{"字典编码", "字典标签", "字典键值", "字典类型", "字典排序", "状态"}, rows)
+	rows, err := s.DataExport(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "dict_data.csv", []string{"字典编码", "字典标签", "字典键值", "字典类型", "字典排序", "状态"}, rows)
 }

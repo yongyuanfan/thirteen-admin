@@ -3,28 +3,39 @@ package router
 import (
 	"net/http"
 
+	"thirteen-admin/app/middlewares"
+
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	freeRouterGroups = make([]func(*gin.RouterGroup), 0)
-	authRouterGroups = make([]func(*gin.RouterGroup, gin.HandlerFunc), 0)
+	routerNoCheckRole = make([]func(*gin.RouterGroup), 0)
+	routerCheckRole   = make([]func(*gin.RouterGroup), 0)
 )
 
-// RegisterFreeRouter 注册无需认证的路由组。
-func RegisterFreeRouter(fn func(*gin.RouterGroup)) {
-	freeRouterGroups = append(freeRouterGroups, fn)
+// RegisterNoCheckRole 注册无需认证的路由。
+func RegisterNoCheckRole(fn func(*gin.RouterGroup)) {
+	routerNoCheckRole = append(routerNoCheckRole, fn)
 }
 
-// RegisterAuthRouter 注册需要认证的路由组。
-func RegisterAuthRouter(fn func(*gin.RouterGroup, gin.HandlerFunc)) {
-	authRouterGroups = append(authRouterGroups, fn)
+// RegisterCheckRole 注册需要认证的路由。
+func RegisterCheckRole(fn func(*gin.RouterGroup)) {
+	routerCheckRole = append(routerCheckRole, fn)
 }
 
 // InitRouter 初始化路由。
-func InitRouter(engine *gin.Engine, authMiddleware gin.HandlerFunc) {
+func InitRouter(engine *gin.Engine) {
 	registerBaseRouter(engine)
-	registerBusinessRouter(engine, authMiddleware)
+
+	free := engine.Group("")
+	for _, f := range routerNoCheckRole {
+		f(free)
+	}
+
+	authed := engine.Group("", middlewares.Auth())
+	for _, f := range routerCheckRole {
+		f(authed)
+	}
 }
 
 func registerBaseRouter(engine *gin.Engine) {
@@ -34,14 +45,4 @@ func registerBaseRouter(engine *gin.Engine) {
 			"msg":  "pong",
 		})
 	})
-}
-
-func registerBusinessRouter(engine *gin.Engine, authMiddleware gin.HandlerFunc) {
-	root := engine.Group("")
-	for _, f := range freeRouterGroups {
-		f(root)
-	}
-	for _, f := range authRouterGroups {
-		f(root, authMiddleware)
-	}
 }

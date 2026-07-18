@@ -7,23 +7,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterRoleRoutes 注册角色路由。
-func RegisterRoleRoutes(h *hsystem.RoleHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		sys := g.Group("/system/role", auth)
-		sys.GET("/list", h.List)
-		sys.GET("/authUser/allocatedList", h.AllocatedList)
-		sys.GET("/authUser/unallocatedList", h.UnallocatedList)
-		sys.GET("/deptTree/:roleId", h.DeptTree)
-		sys.GET("/:roleId", h.Get)
-		sys.POST("", h.Add)
-		sys.POST("/export", h.Export)
-		sys.PUT("", h.Edit)
-		sys.PUT("/dataScope", h.DataScope)
-		sys.PUT("/changeStatus", h.ChangeStatus)
-		sys.PUT("/authUser/cancel", h.CancelAuthUser)
-		sys.PUT("/authUser/cancelAll", h.CancelAuthUserAll)
-		sys.PUT("/authUser/selectAll", h.SelectAuthUserAll)
-		sys.DELETE("/:roleId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerRoleRouter)
+}
+
+func registerRoleRouter(g *gin.RouterGroup) {
+	h := hsystem.RoleHandler{}
+	r := g.Group("/system/role")
+	{
+		r.GET("/list", h.List)
+		r.GET("/authUser/allocatedList", h.AllocatedList)
+		r.GET("/authUser/unallocatedList", h.UnallocatedList)
+		r.GET("/deptTree/:roleId", h.DeptTree)
+		r.GET("/:roleId", h.Get)
+		r.POST("", h.Add)
+		r.POST("/export", h.Export)
+		r.PUT("", h.Edit)
+		r.PUT("/dataScope", h.DataScope)
+		r.PUT("/changeStatus", h.ChangeStatus)
+		r.PUT("/authUser/cancel", h.CancelAuthUser)
+		r.PUT("/authUser/cancelAll", h.CancelAuthUserAll)
+		r.PUT("/authUser/selectAll", h.SelectAuthUserAll)
+		r.DELETE("/:roleId", h.Delete)
+	}
 }

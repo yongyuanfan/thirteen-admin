@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"thirteen-admin/app/middlewares"
+	"thirteen-admin/app/runtime"
 	"thirteen-admin/app/services"
 	"thirteen-admin/internal/base/handler"
 
@@ -12,13 +13,7 @@ import (
 
 // AuthHandler 鉴权 HTTP 处理器。
 type AuthHandler struct {
-	handler.Handler
-	svc *services.AuthService
-}
-
-// NewAuthHandler 创建鉴权 Handler。
-func NewAuthHandler(svc *services.AuthService) *AuthHandler {
-	return &AuthHandler{svc: svc}
+	handler.Api
 }
 
 type loginReq struct {
@@ -39,52 +34,74 @@ type unlockReq struct {
 	Password string `json:"password"`
 }
 
+func (e *AuthHandler) authService(c *gin.Context) (*services.AuthService, error) {
+	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
+		return nil, err
+	}
+	return services.NewAuthService(e.Orm, runtime.Redis(), runtime.JWT(), runtime.Captcha(), runtime.Online()), nil
+}
+
 // Login POST /login
-func (h *AuthHandler) Login(ctx *gin.Context) {
-	var req loginReq
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+func (e AuthHandler) Login(c *gin.Context) {
+	s, err := e.authService(c)
+	if err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	token, err := h.svc.Login(ctx, req.Username, req.Password, req.Code, req.UUID, ctx.ClientIP(), ctx.Request.UserAgent())
+	var req loginReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
+		return
+	}
+	token, err := s.Login(c, req.Username, req.Password, req.Code, req.UUID, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrCaptchaInvalid):
-			h.Fail(ctx, handler.CodeError, err.Error())
+			e.Fail(c, handler.CodeError, err.Error())
 		case errors.Is(err, services.ErrUserDisabled):
-			h.Fail(ctx, handler.CodeError, err.Error())
+			e.Fail(c, handler.CodeError, err.Error())
 		case errors.Is(err, services.ErrInvalidCredentials):
-			h.Fail(ctx, handler.CodeError, err.Error())
+			e.Fail(c, handler.CodeError, err.Error())
 		default:
-			h.InternalError(ctx, err)
+			e.InternalError(c, err)
 		}
 		return
 	}
-	h.OK(ctx, gin.H{"token": token})
+	e.OK(c, gin.H{"token": token})
 }
 
 // Register POST /register
-func (h *AuthHandler) Register(ctx *gin.Context) {
+func (e AuthHandler) Register(c *gin.Context) {
+	s, err := e.authService(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req registerReq
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Register(ctx, req.Username, req.Password, req.Code, req.UUID); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Register(c, req.Username, req.Password, req.Code, req.UUID); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "注册成功")
+	e.SuccessMsg(c, "注册成功")
 }
 
 // CaptchaImage GET /captchaImage
-func (h *AuthHandler) CaptchaImage(ctx *gin.Context) {
-	uuid, img, enabled, err := h.svc.CaptchaImage(ctx)
+func (e AuthHandler) CaptchaImage(c *gin.Context) {
+	s, err := e.authService(c)
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
-	h.OK(ctx, gin.H{
+	uuid, img, enabled, err := s.CaptchaImage(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.OK(c, gin.H{
 		"uuid":           uuid,
 		"img":            img,
 		"captchaEnabled": enabled,
@@ -92,14 +109,19 @@ func (h *AuthHandler) CaptchaImage(ctx *gin.Context) {
 }
 
 // GetInfo GET /getInfo
-func (h *AuthHandler) GetInfo(ctx *gin.Context) {
-	uid := services.ContextUserID(ctx)
-	user, roles, perms, defPwd, expired, err := h.svc.GetInfo(uid)
+func (e AuthHandler) GetInfo(c *gin.Context) {
+	s, err := e.authService(c)
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
-	h.OK(ctx, gin.H{
+	uid := services.ContextUserID(c)
+	user, roles, perms, defPwd, expired, err := s.GetInfo(uid)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.OK(c, gin.H{
 		"user":               user,
 		"roles":              roles,
 		"permissions":        perms,
@@ -109,33 +131,48 @@ func (h *AuthHandler) GetInfo(ctx *gin.Context) {
 }
 
 // Logout POST /logout
-func (h *AuthHandler) Logout(ctx *gin.Context) {
-	token, _ := ctx.Get(middlewares.ContextTokenKey)
+func (e AuthHandler) Logout(c *gin.Context) {
+	s, err := e.authService(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	token, _ := c.Get(middlewares.ContextTokenKey)
 	tokenStr, _ := token.(string)
-	_ = h.svc.Logout(ctx, tokenStr)
-	h.SuccessMsg(ctx, "退出成功")
+	_ = s.Logout(c, tokenStr)
+	e.SuccessMsg(c, "退出成功")
 }
 
 // UnlockScreen POST /unlockscreen
-func (h *AuthHandler) UnlockScreen(ctx *gin.Context) {
+func (e AuthHandler) UnlockScreen(c *gin.Context) {
+	s, err := e.authService(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req unlockReq
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.UnlockScreen(services.ContextUserID(ctx), req.Password); err != nil {
-		h.Fail(ctx, handler.CodeError, "密码错误")
+	if err := s.UnlockScreen(services.ContextUserID(c), req.Password); err != nil {
+		e.Fail(c, handler.CodeError, "密码错误")
 		return
 	}
-	h.SuccessMsg(ctx, "解锁成功")
+	e.SuccessMsg(c, "解锁成功")
 }
 
 // GetRouters GET /getRouters
-func (h *AuthHandler) GetRouters(ctx *gin.Context) {
-	data, err := h.svc.GetRouters(services.ContextUserID(ctx))
+func (e AuthHandler) GetRouters(c *gin.Context) {
+	s, err := e.authService(c)
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	data, err := s.GetRouters(services.ContextUserID(c))
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }

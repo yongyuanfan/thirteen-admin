@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"thirteen-admin/app/services"
+	"thirteen-admin/app/runtime"
 	"thirteen-admin/internal/base/handler"
 
 	"github.com/gin-gonic/gin"
@@ -14,34 +14,29 @@ import (
 
 // CommonHandler 公共上传下载。
 type CommonHandler struct {
-	handler.Handler
-	files *services.FileService
-}
-
-// NewCommonHandler 创建。
-func NewCommonHandler(files *services.FileService) *CommonHandler {
-	return &CommonHandler{files: files}
+	handler.Api
 }
 
 // Upload POST /common/upload
-func (h *CommonHandler) Upload(ctx *gin.Context) {
-	file, err := ctx.FormFile("file")
+func (e CommonHandler) Upload(c *gin.Context) {
+	files := runtime.File()
+	file, err := c.FormFile("file")
 	if err != nil {
-		h.BadRequest(ctx, "请选择文件")
+		e.BadRequest(c, "请选择文件")
 		return
 	}
 	f, err := file.Open()
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
 	defer f.Close()
-	fileName, newFileName, urlPath, err := h.files.SaveUpload(file.Filename, f)
+	fileName, newFileName, urlPath, err := files.SaveUpload(file.Filename, f)
 	if err != nil {
-		h.InternalError(ctx, err)
+		e.InternalError(c, err)
 		return
 	}
-	h.OK(ctx, gin.H{
+	e.OK(c, gin.H{
 		"fileName":         fileName,
 		"newFileName":      newFileName,
 		"url":              urlPath,
@@ -50,38 +45,40 @@ func (h *CommonHandler) Upload(ctx *gin.Context) {
 }
 
 // Download GET /common/download
-func (h *CommonHandler) Download(ctx *gin.Context) {
-	name := ctx.Query("fileName")
-	del := ctx.Query("delete") == "true"
-	abs, err := h.files.Resolve(name)
+func (e CommonHandler) Download(c *gin.Context) {
+	files := runtime.File()
+	name := c.Query("fileName")
+	del := c.Query("delete") == "true"
+	abs, err := files.Resolve(name)
 	if err != nil {
-		h.BadRequest(ctx, err.Error())
+		e.BadRequest(c, err.Error())
 		return
 	}
 	base := filepath.Base(abs)
-	ctx.Header("download-filename", url.QueryEscape(base))
-	ctx.FileAttachment(abs, base)
+	c.Header("download-filename", url.QueryEscape(base))
+	c.FileAttachment(abs, base)
 	if del {
 		_ = os.Remove(abs)
 	}
 }
 
 // DownloadResource GET /common/download/resource
-func (h *CommonHandler) DownloadResource(ctx *gin.Context) {
-	resource := ctx.Query("resource")
-	abs, err := h.files.Resolve(resource)
+func (e CommonHandler) DownloadResource(c *gin.Context) {
+	files := runtime.File()
+	resource := c.Query("resource")
+	abs, err := files.Resolve(resource)
 	if err != nil {
-		h.BadRequest(ctx, err.Error())
+		e.BadRequest(c, err.Error())
 		return
 	}
 	base := filepath.Base(abs)
-	ctx.Header("download-filename", url.QueryEscape(base))
-	ctx.FileAttachment(abs, base)
+	c.Header("download-filename", url.QueryEscape(base))
+	c.FileAttachment(abs, base)
 }
 
 // ParseBoolQuery 解析布尔 query。
-func ParseBoolQuery(ctx *gin.Context, key string) bool {
-	v := ctx.Query(key)
+func ParseBoolQuery(c *gin.Context, key string) bool {
+	v := c.Query(key)
 	b, _ := strconv.ParseBool(v)
 	return b
 }

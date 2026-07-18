@@ -7,28 +7,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterJobRoutes 注册定时任务路由。
-func RegisterJobRoutes(h *hmonitor.JobHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		m := g.Group("/monitor/job", auth)
-		m.GET("/list", h.List)
-		m.PUT("/changeStatus", h.ChangeStatus)
-		m.PUT("/run", h.Run)
-		m.POST("/export", h.Export)
-		m.GET("/:jobId", h.Get)
-		m.POST("", h.Add)
-		m.PUT("", h.Edit)
-		m.DELETE("/:jobId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerJobRouter)
+	router.RegisterCheckRole(registerJobLogRouter)
 }
 
-// RegisterJobLogRoutes 注册任务日志路由。
-func RegisterJobLogRoutes(h *hmonitor.JobLogHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		m := g.Group("/monitor/jobLog", auth)
-		m.GET("/list", h.List)
-		m.DELETE("/clean", h.Clean)
-		m.POST("/export", h.Export)
-		m.DELETE("/:jobLogId", h.Delete)
-	})
+func registerJobRouter(g *gin.RouterGroup) {
+	h := hmonitor.JobHandler{}
+	r := g.Group("/monitor/job")
+	{
+		r.GET("/list", h.List)
+		r.PUT("/changeStatus", h.ChangeStatus)
+		r.PUT("/run", h.Run)
+		r.POST("/export", h.Export)
+		r.GET("/:jobId", h.Get)
+		r.POST("", h.Add)
+		r.PUT("", h.Edit)
+		r.DELETE("/:jobId", h.Delete)
+	}
+}
+
+func registerJobLogRouter(g *gin.RouterGroup) {
+	h := hmonitor.JobLogHandler{}
+	r := g.Group("/monitor/jobLog")
+	{
+		r.GET("/list", h.List)
+		r.DELETE("/clean", h.Clean)
+		r.POST("/export", h.Export)
+		r.DELETE("/:jobLogId", h.Delete)
+	}
 }

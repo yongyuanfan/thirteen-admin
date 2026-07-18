@@ -14,52 +14,61 @@ import (
 
 // ConfigHandler 参数 HTTP 处理器。
 type ConfigHandler struct {
-	handler.Handler
-	svc *services.ConfigService
-}
-
-// NewConfigHandler 创建参数 Handler。
-func NewConfigHandler(svc *services.ConfigService) *ConfigHandler {
-	return &ConfigHandler{svc: svc}
+	handler.Api
 }
 
 // List GET /system/config/list
-func (h *ConfigHandler) List(ctx *gin.Context) {
-	total, rows, err := h.svc.List(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e ConfigHandler) List(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Table(ctx, total, rows)
+	total, rows, err := s.List(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	e.Table(c, total, rows)
 }
 
 // Get GET /system/config/:configId
-func (h *ConfigHandler) Get(ctx *gin.Context) {
-	id, _ := strconv.ParseUint(ctx.Param("configId"), 10, 64)
-	data, err := h.svc.Get(uint(id))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "参数不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e ConfigHandler) Get(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.Success(ctx, data)
+	id, _ := strconv.ParseUint(c.Param("configId"), 10, 64)
+	data, err := s.Get(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "参数不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.Success(c, data)
 }
 
 // GetByKey GET /system/config/configKey/:configKey
-func (h *ConfigHandler) GetByKey(ctx *gin.Context) {
-	value, err := h.svc.GetByKey(ctx.Param("configKey"))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			h.NotFound(ctx, "参数不存在")
-			return
-		}
-		h.InternalError(ctx, err)
+func (e ConfigHandler) GetByKey(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, value)
+	value, err := s.GetByKey(c.Param("configKey"))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			e.NotFound(c, "参数不存在")
+			return
+		}
+		e.InternalError(c, err)
+		return
+	}
+	e.SuccessMsg(c, value)
 }
 
 type configBody struct {
@@ -72,10 +81,15 @@ type configBody struct {
 }
 
 // Add POST /system/config
-func (h *ConfigHandler) Add(ctx *gin.Context) {
+func (e ConfigHandler) Add(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req configBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	cfg := &models.Config{
@@ -88,18 +102,23 @@ func (h *ConfigHandler) Add(ctx *gin.Context) {
 	if cfg.ConfigType == "" {
 		cfg.ConfigType = "N"
 	}
-	if err := h.svc.Add(cfg, services.ContextUserName(ctx)); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Add(cfg, services.ContextUserName(c)); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "新增成功")
+	e.SuccessMsg(c, "新增成功")
 }
 
 // Edit PUT /system/config
-func (h *ConfigHandler) Edit(ctx *gin.Context) {
+func (e ConfigHandler) Edit(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
 	var req configBody
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		h.BadRequest(ctx, "参数错误")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		e.BadRequest(c, "参数错误")
 		return
 	}
 	cfg := &models.Config{
@@ -110,38 +129,48 @@ func (h *ConfigHandler) Edit(ctx *gin.Context) {
 		Remark:      req.Remark,
 	}
 	cfg.ID = req.ConfigID
-	if err := h.svc.Edit(cfg, services.ContextUserName(ctx)); err != nil {
-		h.InternalError(ctx, err)
+	if err := s.Edit(cfg, services.ContextUserName(c)); err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	h.SuccessMsg(ctx, "修改成功")
+	e.SuccessMsg(c, "修改成功")
 }
 
 // Delete DELETE /system/config/:configId
-func (h *ConfigHandler) Delete(ctx *gin.Context) {
-	ids := services.ParseUintIDs(ctx.Param("configId"))
+func (e ConfigHandler) Delete(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	ids := services.ParseUintIDs(c.Param("configId"))
 	if len(ids) == 0 {
-		h.BadRequest(ctx, "参数错误")
+		e.BadRequest(c, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(ids); err != nil {
-		h.Fail(ctx, handler.CodeError, err.Error())
+	if err := s.Delete(ids); err != nil {
+		e.Fail(c, handler.CodeError, err.Error())
 		return
 	}
-	h.SuccessMsg(ctx, "删除成功")
+	e.SuccessMsg(c, "删除成功")
 }
 
 // RefreshCache DELETE /system/config/refreshCache
-func (h *ConfigHandler) RefreshCache(ctx *gin.Context) {
-	h.SuccessMsg(ctx, "刷新缓存成功")
+func (e ConfigHandler) RefreshCache(c *gin.Context) {
+	e.SuccessMsg(c, "刷新缓存成功")
 }
 
 // Export POST /system/config/export
-func (h *ConfigHandler) Export(ctx *gin.Context) {
-	rows, err := h.svc.Export(ctx)
-	if err != nil {
-		h.InternalError(ctx, err)
+func (e ConfigHandler) Export(c *gin.Context) {
+	s := services.ConfigService{}
+	if err := e.MakeContext(c).MakeOrm().MakeService(&s.Service).Errors; err != nil {
+		e.InternalError(c, err)
 		return
 	}
-	services.WriteCSV(ctx, "config.csv", []string{"参数编号", "参数名称", "参数键名", "参数键值", "系统内置", "创建时间"}, rows)
+	rows, err := s.Export(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	services.WriteCSV(c, "config.csv", []string{"参数编号", "参数名称", "参数键名", "参数键值", "系统内置", "创建时间"}, rows)
 }

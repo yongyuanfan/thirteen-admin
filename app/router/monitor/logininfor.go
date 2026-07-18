@@ -7,14 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterLogininforRoutes 注册登录日志路由。
-func RegisterLogininforRoutes(h *hmonitor.LogininforHandler) {
-	router.RegisterAuthRouter(func(g *gin.RouterGroup, auth gin.HandlerFunc) {
-		m := g.Group("/monitor/logininfor", auth)
-		m.GET("/list", h.List)
-		m.GET("/unlock/:userName", h.Unlock)
-		m.DELETE("/clean", h.Clean)
-		m.POST("/export", h.Export)
-		m.DELETE("/:infoId", h.Delete)
-	})
+func init() {
+	router.RegisterCheckRole(registerLogininforRouter)
+}
+
+func registerLogininforRouter(g *gin.RouterGroup) {
+	h := hmonitor.LogininforHandler{}
+	r := g.Group("/monitor/logininfor")
+	{
+		r.GET("/list", h.List)
+		r.GET("/unlock/:userName", h.Unlock)
+		r.DELETE("/clean", h.Clean)
+		r.POST("/export", h.Export)
+		r.DELETE("/:infoId", h.Delete)
+	}
 }

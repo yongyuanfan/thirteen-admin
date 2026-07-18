@@ -33,8 +33,10 @@
   - `models/`：GORM 数据模型
   - `seeds/`：AutoMigrate 与种子数据
   - `middlewares/`：Gin 中间件（如 JWT 鉴权）
-  - `router/`：**唯一**放置路由注册；`router.go` 为注册表，业务路由如 `auth.go` 的 `RegisterAuthRoutes`
-  - `app.go`：Bootstrap 装配依赖并 `InitRouter`
+  - `router/`：与 `handlers/` 同构（根级 auth/common + `system`/`monitor`/`tool` 子包）；`RegisterNoCheckRole`/`RegisterCheckRole` 自注册，路由内 `h := XxxHandler{}`
+  - `routes.go`：blank import router 子包以触发 `init`
+  - `runtime/`：进程级共享依赖（DB/Redis/JWT/Online/Captcha/File）
+  - `app.go`：Bootstrap 写入 runtime、挂 WithDB/OperLog，再 `InitRouter`
 - `internal/base/` 分层通用代码（无具体业务域）：
   - `handler/`：统一响应信封 `{code,msg,data}`、错误码、`Handler` 基类
   - `service/`：`Service` 基类（持有 `*gorm.DB`）
@@ -50,10 +52,11 @@
 
 ```
 router → handlers → services → models → internal/base/model
-                ↘ middlewares → services
-                ↘ internal/base/handler
+                ↘ runtime（读共享依赖）
+                ↘ internal/base/handler（Api Make*）
+middlewares → runtime / services
 seeds → models
-Bootstrap(app) → handlers / services / seeds / middlewares / router
+Bootstrap(app) → runtime / seeds / middlewares / router
 ```
 
 禁止：
@@ -67,9 +70,9 @@ Bootstrap(app) → handlers / services / seeds / middlewares / router
 1. 在 `app/models/` 增加模型（优先嵌入 `model.BaseModel`）。
 2. 在 `app/services/` 实现业务（可嵌入 `service.Service`）。
 3. 在 `app/handlers/` 实现 Handler（嵌入 `handler.Handler`，使用 `Success`/`Fail`）。
-4. 在 `app/router/` 增加 `RegisterXxxRoutes`，通过 `RegisterFreeRouter` / `RegisterAuthRouter` 绑定。
-5. 需要种子数据时在 `app/seeds/` 增加 AutoMigrate/Seed。
-6. 在 `app/app.go` 的 `Bootstrap` 中完成构造、注册路由，最后 `InitRouter`。
+4. 在 `app/handlers/` 实现 Handler：嵌入 `handler.Api`，值接收者方法内 `MakeContext/MakeOrm/MakeService` 装配请求级 Service；共享件从 `app/runtime` 取。
+5. 在 `app/router/` 对应目录新增路由文件（与 handler 路径对齐）：`init()` 里 `RegisterCheckRole`/`RegisterNoCheckRole`，`h := XxxHandler{}` 挂路由；新子包需在 `routes.go` blank import。
+6. 需要种子数据时在 `app/seeds/` 增加 AutoMigrate/Seed；若有新的进程级共享依赖，在 Bootstrap 写入 `runtime`。
 
 ## API 与响应约定
 

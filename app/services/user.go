@@ -33,6 +33,13 @@ func NewUserService(db *gorm.DB, dept *DeptService, post *PostService) *UserServ
 	}
 }
 
+// WithDeps 使用当前 DB 装配协作服务（请求级）。
+func (s *UserService) WithDeps() *UserService {
+	s.dept = &DeptService{Service: s.Service}
+	s.post = &PostService{Service: s.Service}
+	return s
+}
+
 // List 分页查询用户。
 func (s *UserService) List(ctx *gin.Context) (int64, []map[string]any, error) {
 	page := ParsePage(ctx)

@@ -9,14 +9,16 @@ alwaysApply: true
 
 | 路径 | 职责 | 示例 |
 |------|------|------|
-| `app/handlers/` | HTTP 入参校验、调 service、写响应 | `auth.go` → `AuthHandler` |
+| `app/handlers/` | HTTP 入参校验、请求级装配 Service、写响应 | 嵌入 `handler.Api` + Make* |
 | `app/services/` | 业务逻辑、JWT/验证码等 | `auth.go` / `auth_jwt.go` |
 | `app/models/` | GORM 模型 | `user.go` |
 | `app/seeds/` | AutoMigrate + 种子数据 | `user.go` |
-| `app/middlewares/` | 中间件 | `auth.go` |
-| `app/router/` | 路由注册（唯一入口） | `router.go` + `auth.go` |
-| `app/app.go` | Bootstrap 装配 | 注入依赖并 `InitRouter` |
-| `internal/base/handler` | 响应信封、错误码、Handler 基类 | `Success` / `Fail` |
+| `app/middlewares/` | 中间件 | `WithDB` / `Auth` / `OperLog` |
+| `app/runtime/` | 进程级共享依赖 | DB/Redis/JWT/Online/Captcha/File |
+| `app/router/` | 路由注册（与 handlers 同构） | 根级 + `system`/`monitor`/`tool` |
+| `app/routes.go` | blank import 子包 | 触发 router 子包 `init` |
+| `app/app.go` | Bootstrap | 写 runtime + `InitRouter` |
+| `internal/base/handler` | 响应信封、`Api` Make* | `Success` / `MakeOrm` |
 | `internal/base/service` | Service 基类 | 持有 `*gorm.DB` |
 | `internal/base/model` | Model 基类、`StringSlice` | `BaseModel` |
 | `internal/{config,storage,logging,runtime,utils}` | 基础设施，无业务域逻辑 | — |
@@ -27,25 +29,26 @@ alwaysApply: true
 
 ```
 router → handlers → services → models → internal/base/model
-                ↘ middlewares → services
+                ↘ runtime
                 ↘ internal/base/handler
+middlewares → runtime / services
 seeds → models
-app.Bootstrap → handlers/services/seeds/middlewares/router
+app.Bootstrap → runtime / seeds / middlewares / router
 ```
 
 - `handlers` **不得** import `router`
-- `services` / `models` / `seeds` **不得** import `handlers`
-- `internal/*` **不得**依赖 `app/*`（`runtime` 调用 `app.Bootstrap` 除外）
+- `services` / `models` / `seeds` **不得** import `handlers` 或 `runtime`（避免环；共享件由 handler 注入）
+- `internal/*` **不得**依赖 `app/*`（`internal/runtime` 调用 `app.Bootstrap` 除外）
 
 ## 新增业务清单
 
 1. `app/models/<domain>.go` — 模型（优先嵌入 `model.BaseModel`）
 2. `app/services/<domain>.go` — 业务（可嵌入 `service.Service`）
-3. `app/handlers/<domain>.go` — Handler（嵌入 `handler.Handler`，用 `Success`/`Fail`）
-4. `app/router/<domain>.go` — `RegisterXxxRoutes`，内部用 `RegisterFreeRouter` / `RegisterAuthRouter`
+3. `app/handlers/<domain>.go` — 嵌入 `handler.Api`；值接收者；方法内 `MakeContext/MakeOrm/MakeService`；共享件用 `runtime`
+4. `app/router/<同 handlers 路径>` — `init()` 里 `RegisterCheckRole`/`RegisterNoCheckRole`；`h := XxxHandler{}` 挂路由；新子包在 `routes.go` blank import
 5. 需要种子时：`app/seeds/<domain>.go`
 6. 需要鉴权中间件时：复用或扩展 `app/middlewares`
-7. 在 `app/app.go` 的 `Bootstrap` 中装配并调用 `router.RegisterXxxRoutes`，再 `InitRouter`
+7. 新的进程级共享依赖在 Bootstrap 写入 `app/runtime`
 
 ## API 约定
 

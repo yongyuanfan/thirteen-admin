@@ -7,14 +7,16 @@ import (
 	"time"
 
 	"thirteen-admin/app/models"
+	"thirteen-admin/app/runtime"
 	"thirteen-admin/app/services"
+	"thirteen-admin/internal/base/handler"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
 // OperLog 记录写操作日志。
-func OperLog(db *gorm.DB) gin.HandlerFunc {
+func OperLog() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		method := ctx.Request.Method
 		if method == "GET" || method == "OPTIONS" || method == "HEAD" {
@@ -34,6 +36,11 @@ func OperLog(db *gorm.DB) gin.HandlerFunc {
 		start := time.Now()
 		ctx.Next()
 		cost := time.Since(start).Milliseconds()
+
+		db := dbFromContext(ctx)
+		if db == nil {
+			return
+		}
 
 		status := 0
 		if ctx.Writer.Status() >= 400 {
@@ -59,6 +66,15 @@ func OperLog(db *gorm.DB) gin.HandlerFunc {
 			CostTime:      cost,
 		}).Error
 	}
+}
+
+func dbFromContext(ctx *gin.Context) *gorm.DB {
+	if v, ok := ctx.Get(handler.ContextDBKey); ok {
+		if db, ok := v.(*gorm.DB); ok && db != nil {
+			return db
+		}
+	}
+	return runtime.DB()
 }
 
 func mapBusinessType(method string) int {
