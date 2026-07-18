@@ -1,12 +1,9 @@
 package models
 
-// RoleMenu 角色-菜单关联。
+// RoleMenu 角色和菜单关联表。
 type RoleMenu struct {
-	ID     uint `gorm:"primaryKey" json:"id"`
-	RoleID uint `gorm:"not null;uniqueIndex:uk_role_menu" json:"roleId"`
-	MenuID uint `gorm:"not null;uniqueIndex:uk_role_menu;index" json:"menuId"`
+	RoleID uint `gorm:"column:role_id;primaryKey" json:"roleId"`
+	MenuID uint `gorm:"column:menu_id;primaryKey" json:"menuId"`
 }
 
-func (RoleMenu) TableName() string {
-	return "role_menus"
-}
+func (RoleMenu) TableName() string { return "sys_role_menu" }

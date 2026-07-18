@@ -1,19 +1,21 @@
 package models
 
-import "clash-admin/internal/base/model"
+import "thirteen-admin/internal/base/model"
 
-// Role 系统角色。
+// Role 角色信息表。
 type Role struct {
 	model.BaseModel
-	RoleName string `gorm:"size:64;not null" json:"roleName"`
-	RoleCode string `gorm:"size:64;uniqueIndex;not null" json:"roleCode"`
-	RoleDesc string `gorm:"size:255;not null;default:''" json:"roleDesc"`
-	Home     string `gorm:"size:128;not null;default:home" json:"home"`
-	Status   int8   `gorm:"not null;default:1" json:"status"` // 1=启用 2=禁用
-	CreateBy string `gorm:"size:64;not null;default:''" json:"createBy"`
-	UpdateBy string `gorm:"size:64;not null;default:''" json:"updateBy"`
+	RoleName          string `gorm:"size:30;not null" json:"roleName"`
+	RoleKey           string `gorm:"size:100;not null" json:"roleKey"`
+	RoleSort          int    `gorm:"not null" json:"roleSort"`
+	DataScope         string `gorm:"size:1;default:1" json:"dataScope"` // 1全部 2自定 3本部门 4本部门及以下
+	MenuCheckStrictly bool   `gorm:"default:true" json:"menuCheckStrictly"`
+	DeptCheckStrictly bool   `gorm:"default:true" json:"deptCheckStrictly"`
+	Status            string `gorm:"size:1;not null" json:"status"`   // 0正常 1停用
+	DelFlag           string `gorm:"size:1;default:0" json:"delFlag"` // 0存在 2删除
+	CreatedBy         string `gorm:"size:64;default:''" json:"createdBy"`
+	UpdatedBy         string `gorm:"size:64;default:''" json:"updatedBy"`
+	Remark            string `gorm:"size:500" json:"remark"`
 }
 
-func (Role) TableName() string {
-	return "roles"
-}
+func (Role) TableName() string { return "sys_role" }

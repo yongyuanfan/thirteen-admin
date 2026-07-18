@@ -1,46 +1,27 @@
 package models
 
-import "clash-admin/internal/base/model"
+import "thirteen-admin/internal/base/model"
 
-// MenuButton 菜单按钮权限项。
-type MenuButton struct {
-	Code string `json:"code"`
-	Desc string `json:"desc"`
-}
-
-// MenuQuery 菜单路由 query 项。
-type MenuQuery struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// Menu 系统菜单。
+// Menu 菜单权限表。
 type Menu struct {
 	model.BaseModel
-	ParentID        uint                        `gorm:"not null;default:0;index" json:"parentId"`
-	MenuType        string                      `gorm:"size:8;not null" json:"menuType"` // 1=目录 2=菜单
-	MenuName        string                      `gorm:"size:64;not null" json:"menuName"`
-	RouteName       string                      `gorm:"size:128;not null;index" json:"routeName"`
-	RoutePath       string                      `gorm:"size:255;not null;default:''" json:"routePath"`
-	Component       string                      `gorm:"size:255;not null;default:''" json:"component"`
-	Icon            string                      `gorm:"size:128;not null;default:''" json:"icon"`
-	IconType        string                      `gorm:"size:8;not null;default:1" json:"iconType"` // 1=iconify 2=local
-	Buttons         model.JSONSlice[MenuButton] `gorm:"type:json" json:"buttons"`
-	Query           model.JSONSlice[MenuQuery]  `gorm:"type:json" json:"query"`
-	I18nKey         *string                     `gorm:"size:128" json:"i18nKey"`
-	KeepAlive       *bool                       `json:"keepAlive"`
-	Constant        *bool                       `json:"constant"`
-	Order           *int                        `gorm:"column:sort_order" json:"order"`
-	Href            *string                     `gorm:"size:512" json:"href"`
-	HideInMenu      *bool                       `json:"hideInMenu"`
-	ActiveMenu      *string                     `gorm:"size:128" json:"activeMenu"`
-	MultiTab        *bool                       `json:"multiTab"`
-	FixedIndexInTab *int                        `json:"fixedIndexInTab"`
-	Status          int8                        `gorm:"not null;default:1" json:"status"` // 1=启用 2=禁用
-	CreateBy        string                      `gorm:"size:64;not null;default:''" json:"createBy"`
-	UpdateBy        string                      `gorm:"size:64;not null;default:''" json:"updateBy"`
+	MenuName  string `gorm:"size:50;not null" json:"menuName"`
+	ParentID  uint   `gorm:"column:parent_id;default:0" json:"parentId"`
+	OrderNum  int    `gorm:"column:order_num;default:0" json:"orderNum"`
+	Path      string `gorm:"size:200;default:''" json:"path"`
+	Component string `gorm:"size:255" json:"component"`
+	Query     string `gorm:"size:255" json:"query"`
+	RouteName string `gorm:"size:50;default:''" json:"routeName"`
+	IsFrame   int    `gorm:"column:is_frame;default:1" json:"isFrame"` // 0是 1否
+	IsCache   int    `gorm:"column:is_cache;default:0" json:"isCache"` // 0缓存 1不缓存
+	MenuType  string `gorm:"size:1;default:''" json:"menuType"`        // M目录 C菜单 F按钮
+	Visible   string `gorm:"size:1;default:0" json:"visible"`          // 0显示 1隐藏
+	Status    string `gorm:"size:1;default:0" json:"status"`           // 0正常 1停用
+	Perms     string `gorm:"size:100" json:"perms"`
+	Icon      string `gorm:"size:100;default:#" json:"icon"`
+	CreatedBy string `gorm:"size:64;default:''" json:"createdBy"`
+	UpdatedBy string `gorm:"size:64;default:''" json:"updatedBy"`
+	Remark    string `gorm:"size:500;default:''" json:"remark"`
 }
 
-func (Menu) TableName() string {
-	return "menus"
-}
+func (Menu) TableName() string { return "sys_menu" }
