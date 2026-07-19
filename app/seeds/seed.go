@@ -32,7 +32,7 @@ func CleanupObsolete(db *gorm.DB) error {
 	return nil
 }
 
-// SeedIfEmpty 当用户表为空时执行 ry.sql 初始化。
+// SeedIfEmpty 当用户表为空时执行 thirteen-admin.sql 初始化。
 func SeedIfEmpty(db *gorm.DB) error {
 	var count int64
 	if err := db.Model(&models.User{}).Count(&count).Error; err != nil {
@@ -41,13 +41,13 @@ func SeedIfEmpty(db *gorm.DB) error {
 	if count > 0 {
 		return nil
 	}
-	sqlPath, err := locateRySQL()
+	sqlPath, err := locateSeedSQL()
 	if err != nil {
 		return err
 	}
 	raw, err := os.ReadFile(sqlPath)
 	if err != nil {
-		return fmt.Errorf("read ry.sql: %w", err)
+		return fmt.Errorf("read thirteen-admin.sql: %w", err)
 	}
 	stmts := splitSQL(string(raw))
 	for _, stmt := range stmts {
@@ -62,17 +62,17 @@ func SeedIfEmpty(db *gorm.DB) error {
 	return nil
 }
 
-func locateRySQL() (string, error) {
+func locateSeedSQL() (string, error) {
 	candidates := []string{
-		"docs/ry.sql",
-		filepath.Join(pathx.ResolveProjectRoot(), "docs", "ry.sql"),
+		"docs/thirteen-admin.sql",
+		filepath.Join(pathx.ResolveProjectRoot(), "docs", "thirteen-admin.sql"),
 	}
 	for _, c := range candidates {
 		if st, err := os.Stat(c); err == nil && !st.IsDir() {
 			return c, nil
 		}
 	}
-	return "", fmt.Errorf("docs/ry.sql not found")
+	return "", fmt.Errorf("docs/thirteen-admin.sql not found")
 }
 
 func splitSQL(s string) []string {

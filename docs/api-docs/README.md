@@ -61,7 +61,7 @@
 
 ## 数据库
 
-表结构见 [../ry.sql](../ry.sql)。
+表结构见 [../thirteen-admin.sql](../thirteen-admin.sql)。
 
 ## 实现状态说明
 

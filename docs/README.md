@@ -14,4 +14,4 @@
 
 ## 数据库
 
-- [ry.sql](./ry.sql)：表结构与初始化数据
+- [thirteen-admin.sql](./thirteen-admin.sql)：表结构与初始化数据

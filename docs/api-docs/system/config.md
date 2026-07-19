@@ -52,7 +52,7 @@ Query：`configName`、`configKey`、`configType`、`params[beginTime/endTime]`�
 |-----------|------|
 | `sys.user.initPassword` | 用户管理页展示初始密码 |
 
-其它内置键见 `docs/ry.sql` 种子数据（皮肤、验证码开关、注册开关、密码策略等）。
+其它内置键见 `docs/thirteen-admin.sql` 种子数据（皮肤、验证码开关、注册开关、密码策略等）。
 
 ---
 
