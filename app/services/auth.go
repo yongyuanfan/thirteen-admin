@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ var (
 	ErrUserDisabled       = errors.New("用户已停用，请联系管理员")
 	ErrCaptchaInvalid     = errors.New("验证码错误")
 	ErrRegisterDisabled   = errors.New("当前系统没有开启注册功能")
+	ErrSessionRevoked     = errors.New("登录状态已过期")
 )
 
 // AuthService 鉴权业务。
@@ -50,30 +52,30 @@ func (s *AuthService) CaptchaImage(ctx context.Context) (uuid, img string, enabl
 }
 
 // Login 用户名密码登录。
-func (s *AuthService) Login(ctx context.Context, username, password, code, uuid, ip, ua string) (token string, err error) {
+func (s *AuthService) Login(ctx context.Context, username, password, code, uuid, ip, ua string) (*TokenPair, error) {
 	if !s.captcha.Verify(ctx, uuid, code) {
 		s.recordLogin(username, ip, "1", "验证码错误")
-		return "", ErrCaptchaInvalid
+		return nil, ErrCaptchaInvalid
 	}
 	user, err := s.findByUserName(username)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.recordLogin(username, ip, "1", "用户不存在")
-			return "", ErrInvalidCredentials
+			return nil, ErrInvalidCredentials
 		}
-		return "", err
+		return nil, err
 	}
 	if user.Status == "1" || user.DelFlag == "2" {
 		s.recordLogin(username, ip, "1", "用户已停用")
-		return "", ErrUserDisabled
+		return nil, ErrUserDisabled
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		s.recordLogin(username, ip, "1", "密码错误")
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
-	token, err = s.jwt.IssueToken(user.ID, user.UserName)
+	pair, err := s.jwt.IssuePair(user.ID, user.UserName, "", time.Time{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	now := time.Now()
 	_ = s.DB.Model(user).Updates(map[string]any{
@@ -83,14 +85,76 @@ func (s *AuthService) Login(ctx context.Context, username, password, code, uuid,
 	s.recordLogin(username, ip, "0", "登录成功")
 	if s.online != nil {
 		_ = s.online.Put(ctx, OnlineUser{
-			TokenID:   token,
+			TokenID:   pair.Sid,
 			UserName:  user.UserName,
 			IPAddr:    ip,
 			Browser:   ua,
 			LoginTime: now.UnixMilli(),
-		})
+		}, time.Duration(pair.RefreshExpiresIn)*time.Second)
 	}
-	return token, nil
+	return pair, nil
+}
+
+// Refresh 使用 refresh token 换发新的双 token。
+func (s *AuthService) Refresh(ctx context.Context, refreshToken, ip, ua string) (*TokenPair, error) {
+	if s.jwt == nil {
+		return nil, ErrInvalidToken
+	}
+	claims, err := s.jwt.ParseRefresh(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+	if s.jwt.AutoRevokeToken() && s.online != nil {
+		ok, err := s.online.TokenExists(ctx, claims.Sid)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, ErrSessionRevoked
+		}
+	}
+	userID, err := strconv.ParseUint(claims.UserID, 10, 64)
+	if err != nil {
+		return nil, ErrInvalidToken
+	}
+	var user models.User
+	if err := s.DB.First(&user, uint(userID)).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, err
+	}
+	if user.Status == "1" || user.DelFlag == "2" {
+		return nil, ErrUserDisabled
+	}
+
+	var refreshExp time.Time
+	if s.jwt.AutoRefreshToken() {
+		refreshExp = time.Time{} // IssuePair 内按 now+refreshTTL
+	} else if claims.ExpiresAt != nil {
+		refreshExp = claims.ExpiresAt.Time
+	} else {
+		return nil, ErrExpiredToken
+	}
+
+	pair, err := s.jwt.IssuePair(user.ID, user.UserName, claims.Sid, refreshExp)
+	if err != nil {
+		return nil, err
+	}
+	if s.online != nil {
+		loginTime := time.Now().UnixMilli()
+		if existing, err := s.online.Get(ctx, claims.Sid); err == nil && existing.LoginTime > 0 {
+			loginTime = existing.LoginTime
+		}
+		_ = s.online.Put(ctx, OnlineUser{
+			TokenID:   pair.Sid,
+			UserName:  user.UserName,
+			IPAddr:    ip,
+			Browser:   ua,
+			LoginTime: loginTime,
+		}, time.Duration(pair.RefreshExpiresIn)*time.Second)
+	}
+	return pair, nil
 }
 
 // Register 注册。
@@ -122,12 +186,26 @@ func (s *AuthService) Register(ctx context.Context, username, password, code, uu
 	return s.DB.Create(user).Error
 }
 
-// Logout 退出。
-func (s *AuthService) Logout(ctx context.Context, token string) error {
-	if s.online != nil && token != "" {
-		return s.online.Remove(ctx, token)
+// Logout 退出：按 sid 删除在线会话（auto_revoke_token 开启时后续鉴权立即失败）。
+func (s *AuthService) Logout(ctx context.Context, accessToken, refreshToken string) error {
+	if s.online == nil {
+		return nil
 	}
-	return nil
+	sid := ""
+	if accessToken != "" && s.jwt != nil {
+		if claims, err := s.jwt.ParseIgnoreExpiry(accessToken); err == nil && claims.Sid != "" {
+			sid = claims.Sid
+		}
+	}
+	if sid == "" && refreshToken != "" && s.jwt != nil {
+		if claims, err := s.jwt.ParseIgnoreExpiry(refreshToken); err == nil && claims.Sid != "" {
+			sid = claims.Sid
+		}
+	}
+	if sid == "" {
+		return nil
+	}
+	return s.online.Remove(ctx, sid)
 }
 
 // UnlockScreen 解锁屏幕。

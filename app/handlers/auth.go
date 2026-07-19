@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"errors"
+	"strings"
 
-	"thirteen-admin/app/middlewares"
 	"thirteen-admin/app/runtime"
 	"thirteen-admin/app/services"
 	"thirteen-admin/internal/base/handler"
@@ -34,11 +34,28 @@ type unlockReq struct {
 	Password string `json:"password"`
 }
 
+type refreshReq struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+type logoutReq struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
 func (e *AuthHandler) authService(c *gin.Context) (*services.AuthService, error) {
 	if err := e.MakeContext(c).MakeOrm().Errors; err != nil {
 		return nil, err
 	}
 	return services.NewAuthService(e.Orm, runtime.JWT(), runtime.Captcha(), runtime.Online()), nil
+}
+
+func tokenPairResp(pair *services.TokenPair) gin.H {
+	return gin.H{
+		"token":            pair.AccessToken,
+		"refreshToken":     pair.RefreshToken,
+		"expiresIn":        pair.ExpiresIn,
+		"refreshExpiresIn": pair.RefreshExpiresIn,
+	}
 }
 
 // Login POST /login
@@ -53,7 +70,7 @@ func (e AuthHandler) Login(c *gin.Context) {
 		e.BadRequest(c, "参数错误")
 		return
 	}
-	token, err := s.Login(c, req.Username, req.Password, req.Code, req.UUID, c.ClientIP(), c.Request.UserAgent())
+	pair, err := s.Login(c, req.Username, req.Password, req.Code, req.UUID, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrCaptchaInvalid):
@@ -67,7 +84,36 @@ func (e AuthHandler) Login(c *gin.Context) {
 		}
 		return
 	}
-	e.OK(c, gin.H{"token": token})
+	e.OK(c, tokenPairResp(pair))
+}
+
+// Refresh POST /refresh
+func (e AuthHandler) Refresh(c *gin.Context) {
+	s, err := e.authService(c)
+	if err != nil {
+		e.InternalError(c, err)
+		return
+	}
+	var req refreshReq
+	if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.RefreshToken) == "" {
+		e.BadRequest(c, "参数错误")
+		return
+	}
+	pair, err := s.Refresh(c, req.RefreshToken, c.ClientIP(), c.Request.UserAgent())
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrExpiredToken),
+			errors.Is(err, services.ErrInvalidToken),
+			errors.Is(err, services.ErrSessionRevoked):
+			e.Unauthorized(c, "登录状态已过期")
+		case errors.Is(err, services.ErrUserDisabled):
+			e.Fail(c, handler.CodeError, err.Error())
+		default:
+			e.InternalError(c, err)
+		}
+		return
+	}
+	e.OK(c, tokenPairResp(pair))
 }
 
 // Register POST /register
@@ -130,16 +176,23 @@ func (e AuthHandler) GetInfo(c *gin.Context) {
 	})
 }
 
-// Logout POST /logout
+// Logout POST /logout（可选鉴权：Bearer access 或 body.refreshToken）
 func (e AuthHandler) Logout(c *gin.Context) {
 	s, err := e.authService(c)
 	if err != nil {
 		e.InternalError(c, err)
 		return
 	}
-	token, _ := c.Get(middlewares.ContextTokenKey)
-	tokenStr, _ := token.(string)
-	_ = s.Logout(c, tokenStr)
+	var req logoutReq
+	_ = c.ShouldBindJSON(&req)
+
+	accessToken := ""
+	header := c.GetHeader("Authorization")
+	const prefix = "Bearer "
+	if strings.HasPrefix(header, prefix) {
+		accessToken = strings.TrimSpace(strings.TrimPrefix(header, prefix))
+	}
+	_ = s.Logout(c, accessToken, req.RefreshToken)
 	e.SuccessMsg(c, "退出成功")
 }
 

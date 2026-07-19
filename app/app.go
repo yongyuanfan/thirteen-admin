@@ -41,8 +41,9 @@ func Bootstrap(engine *gin.Engine) error {
 
 	runtime.SetDB(db)
 	runtime.SetCache(cache)
-	runtime.SetJWT(services.NewJWTManager(appConfig.JWT))
-	runtime.SetOnline(services.NewOnlineService(cache, 0))
+	jwtManager := services.NewJWTManager(appConfig.JWT)
+	runtime.SetJWT(jwtManager)
+	runtime.SetOnline(services.NewOnlineService(cache, jwtManager.RefreshTTL()))
 	runtime.SetCaptcha(services.NewCaptchaService(cache, true))
 	runtime.SetFile(services.NewFileService())
 

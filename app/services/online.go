@@ -32,17 +32,17 @@ type OnlineService struct {
 // NewOnlineService 创建在线用户服务。
 func NewOnlineService(cache storage.Cache, ttl time.Duration) *OnlineService {
 	if ttl <= 0 {
-		ttl = 2 * time.Hour
+		ttl = 7 * 24 * time.Hour
 	}
 	return &OnlineService{cache: cache, ttl: ttl}
 }
 
-func (s *OnlineService) key(token string) string {
-	return onlineKeyPref + token
+func (s *OnlineService) key(tokenID string) string {
+	return onlineKeyPref + tokenID
 }
 
-// Put 写入在线会话。
-func (s *OnlineService) Put(ctx context.Context, u OnlineUser) error {
+// Put 写入在线会话。可选 ttl 覆盖默认（绝对过期剩余时间）。
+func (s *OnlineService) Put(ctx context.Context, u OnlineUser, ttl ...time.Duration) error {
 	if s.cache == nil {
 		return nil
 	}
@@ -50,7 +50,27 @@ func (s *OnlineService) Put(ctx context.Context, u OnlineUser) error {
 	if err != nil {
 		return err
 	}
-	return s.cache.Set(ctx, s.key(u.TokenID), string(b), s.ttl)
+	d := s.ttl
+	if len(ttl) > 0 && ttl[0] > 0 {
+		d = ttl[0]
+	}
+	return s.cache.Set(ctx, s.key(u.TokenID), string(b), d)
+}
+
+// Get 读取在线会话。
+func (s *OnlineService) Get(ctx context.Context, tokenID string) (OnlineUser, error) {
+	if s.cache == nil {
+		return OnlineUser{}, storage.ErrCacheMiss
+	}
+	val, err := s.cache.Get(ctx, s.key(tokenID))
+	if err != nil {
+		return OnlineUser{}, err
+	}
+	var u OnlineUser
+	if err := json.Unmarshal([]byte(val), &u); err != nil {
+		return OnlineUser{}, err
+	}
+	return u, nil
 }
 
 // Remove 删除会话。
@@ -98,12 +118,12 @@ func (s *OnlineService) List(ctx context.Context, ipaddr, userName string) ([]On
 	return out, nil
 }
 
-// TokenExists 会话是否存在（用于强退后校验）。
-func (s *OnlineService) TokenExists(ctx context.Context, token string) (bool, error) {
+// TokenExists 会话是否存在（用于强退/退出后校验）。
+func (s *OnlineService) TokenExists(ctx context.Context, tokenID string) (bool, error) {
 	if s.cache == nil {
 		return true, nil
 	}
-	ok, err := s.cache.Exists(ctx, s.key(token))
+	ok, err := s.cache.Exists(ctx, s.key(tokenID))
 	if err != nil {
 		return false, fmt.Errorf("cache exists: %w", err)
 	}

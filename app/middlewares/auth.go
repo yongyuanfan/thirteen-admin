@@ -15,6 +15,7 @@ const (
 	ContextUserIDKey   = "authUserID"
 	ContextUserNameKey = "authUserName"
 	ContextTokenKey    = "authToken"
+	ContextSidKey      = "authSid"
 )
 
 // Auth JWT 鉴权中间件（JWT 从 runtime 读取）。
@@ -58,9 +59,27 @@ func Auth() gin.HandlerFunc {
 			return
 		}
 
+		if jwtManager.AutoRevokeToken() {
+			online := runtime.Online()
+			if online != nil {
+				ok, err := online.TokenExists(ctx, claims.Sid)
+				if err != nil {
+					h.Unauthorized(ctx, "认证失败，无法访问系统资源")
+					ctx.Abort()
+					return
+				}
+				if !ok {
+					h.Unauthorized(ctx, "登录状态已过期")
+					ctx.Abort()
+					return
+				}
+			}
+		}
+
 		ctx.Set(ContextUserIDKey, claims.UserID)
 		ctx.Set(ContextUserNameKey, claims.UserName)
 		ctx.Set(ContextTokenKey, tokenStr)
+		ctx.Set(ContextSidKey, claims.Sid)
 		ctx.Next()
 	}
 }

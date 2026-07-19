@@ -16,12 +16,13 @@ func registerAuthNoCheckRole(g *gin.RouterGroup) {
 	g.POST("/login", h.Login)
 	g.POST("/register", h.Register)
 	g.GET("/captchaImage", h.CaptchaImage)
+	g.POST("/refresh", h.Refresh)
+	g.POST("/logout", h.Logout)
 }
 
 func registerAuthCheckRole(g *gin.RouterGroup) {
 	h := handlers.AuthHandler{}
 	g.GET("/getInfo", h.GetInfo)
-	g.POST("/logout", h.Logout)
 	g.POST("/unlockscreen", h.UnlockScreen)
 	g.GET("/getRouters", h.GetRouters)
 }

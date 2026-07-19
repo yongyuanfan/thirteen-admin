@@ -7,8 +7,10 @@ application:
     port: 8080
   jwt:
     secret: local-test-jwt-secret
-    expires_in: 7200
+    expires_in: 1800
     refresh_expires_in: 604800
+    auto_refresh_token: true
+    auto_revoke_token: true
   logging:
     enabled: true
     level: info
