@@ -22,7 +22,7 @@ application:
       port: 3306
       user: root
       password: 123456
-      database: thirteen-admin-icon
+      database: thirteen-admin
       charset: utf8mb4
     postgres:
       host: localhost
